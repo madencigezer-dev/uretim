@@ -105,7 +105,7 @@ app.innerHTML=`<div class="card"><h3>Günlük giriş</h3>
 <label>Not<input id="g_n" value="${esc(d.note)}"></label></div>
 <div class="card"><h3>Makine durumu</h3><p class="mut">${d.mk?'':'Önceki günün durumu getirildi; değişeni düzelt.'}</p>
 ${grps.map(g=>`<div class="mut" style="margin-top:10px;font-weight:700">${esc(g)}</div>`+D.set.mach.filter(m=>m.grp===g).map(m=>{const st=pm[m.id]||'c';return `<div style="display:flex;gap:6px;margin:4px 0;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">${esc(m.name)}</span><select data-mk="${m.id}" style="width:130px;${st!=='c'?'background:#fee2e2':''}">${Object.keys(DUR).map(k=>`<option value="${k}" ${k===st?'selected':''}>${DUR[k]}</option>`).join('')}</select><input data-mn="${m.id}" placeholder="Arıza / not" value="${esc(pn[m.id])}" style="flex-basis:100%;${st==='c'?'display:none':''}"></div>`}).join('')).join('')}</div>
-<div class="card"><button class="b" id="g_save">Kaydet</button>${D.days[curDay]?'<button class="b r" id="g_del">Günü sil</button>':''}<span id="g_ok" class="mut"></span></div>
+<div class="card"><button class="b" id="g_save">Kaydet</button>${D.days[curDay]?'<button class="b g" onclick="V.rap()">Günlük rapor (PDF)</button>':''}${D.days[curDay]?'<button class="b r" id="g_del">Günü sil</button>':''}<span id="g_ok" class="mut"></span></div>
 <div class="card"><h3>Son kayıtlar</h3><div class="scroll"><table><tr><th>Tarih</th><th>Sefer</th><th>Giren (t)</th><th>Üretim (t)</th><th>Bypass (t)</th></tr>
 ${last.map(k=>{const x=D.days[k],g=(x.sefer||0)*D.set.ton,c=D.set.prods.reduce((s,p)=>s+((x.out||{})[p.id]||0),0);return `<tr onclick="curDay='${k}';go('gun')" style="cursor:pointer"><td>${k.slice(8)}.${k.slice(5,7)}.${k.slice(0,4)}</td><td>${nf(x.sefer)}</td><td>${nf(g)}</td><td>${nf(c,1)}</td><td>${c?nf(g-c,1):'–'}</td></tr>`}).join('')||'<tr><td colspan="5">Kayıt yok</td></tr>'}</table></div><p class="mut">Düzeltmek için satıra dokun.</p></div>`;
 const upd=()=>{const g=(+$('#g_s').value||0)*D.set.ton;$('#g_t').textContent='Giren: '+nf(g)+' ton ('+D.set.ton+' ton/sefer)';let c=0;app.querySelectorAll('[data-p]').forEach(i=>c+=+i.value||0);$('#g_c').textContent='Üretim toplam: '+nf(c,2)+' ton'+(c&&g?' → Bypass: '+nf(g-c,2)+' ton (%'+nf((g-c)/g*100,1)+')':'')};
@@ -116,6 +116,26 @@ $('#g_save').onclick=()=>{const out={},mk={},mkn={};app.querySelectorAll('[data-
 app.querySelectorAll('[data-mk]').forEach(i=>{mk[i.dataset.mk]=i.value;const n=app.querySelector('[data-mn="'+i.dataset.mk+'"]').value;if(i.value!=='c'&&n)mkn[i.dataset.mk]=n});
 D.days[curDay]={sefer:+$('#g_s').value||0,out,note:$('#g_n').value,durus:+$('#g_du').value||0,durusN:$('#g_dn').value,mk,mkn};save();curMonth=curDay.slice(0,7);go('gun');$('#g_ok').textContent=' Kaydedildi ✓'};
 if($('#g_del'))$('#g_del').onclick=()=>{if(confirm(curDay+' kaydı silinsin mi?')){delete D.days[curDay];save();go('gun')}}};
+
+// ---------- GÜNLÜK RAPOR ----------
+function rapData(){const d=D.days[curDay],g=(d.sefer||0)*D.set.ton,o=d.out||{},c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),mk=d.mk||{},s=mstat(curDay.slice(0,7));
+const by=st=>D.set.mach.filter(m=>mk[m.id]===st);return{d,g,o,c,byp:c?g-c:null,mk,s,by,tar:curDay.slice(8)+'.'+curDay.slice(5,7)+'.'+curDay.slice(0,4)}}
+V.rap=()=>{const r=rapData(),d=r.d,nm=m=>esc(m.name)+((d.mkn||{})[m.id]?' ('+esc(d.mkn[m.id])+')':'');
+app.innerHTML=`<div class="card noprint"><button class="b" onclick="window.print()">PDF olarak kaydet / Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
+<p class="mut">PDF için: açılan pencerede yazıcı olarak "PDF olarak kaydet"i seç, sonra dosyayı WhatsApp'tan gönder.</p></div>
+<div class="card"><h3 style="font-size:19px">Günlük Üretim Raporu – ${r.tar}</h3>
+<table><tr><th>Üretim</th><th></th></tr><tr><td>Sefer</td><td>${nf(d.sefer)}</td></tr><tr><td>Giren (sefer × ${D.set.ton} t)</td><td>${nf(r.g)} t</td></tr>
+${D.set.prods.map(p=>`<tr><td>Kantar ${esc(p.name)}</td><td>${r.o[p.id]?nf(r.o[p.id],2)+' t':'–'}</td></tr>`).join('')}
+<tr class="tot"><td>Kantar üretim toplam</td><td>${nf(r.c,2)} t</td></tr><tr><td>Bypass</td><td>${r.byp==null?'–':nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')'}</td></tr>
+<tr><td>Tesis duruşu</td><td>${d.durus?nf(d.durus,1)+' saat'+(d.durusN?' – '+esc(d.durusN):''):'Yok'}</td></tr></table>
+<h3 style="margin-top:14px">Makine durumu</h3>
+<table><tr><td>Çalışan</td><td>${r.by('c').length} / ${D.set.mach.length}</td></tr><tr><td>Arızalı</td><td style="text-align:left">${r.by('a').map(nm).join(', ')||'Yok'}</td></tr><tr><td>Bakımda</td><td style="text-align:left">${r.by('b').map(nm).join(', ')||'Yok'}</td></tr><tr><td>Yedekte</td><td style="text-align:left">${r.by('y').map(nm).join(', ')||'Yok'}</td></tr></table>
+<h3 style="margin-top:14px">${ayAd(curDay.slice(0,7))} – ay toplamı</h3>
+<table><tr><td>Çalışılan gün</td><td>${r.s.gun}</td></tr><tr><td>Sefer</td><td>${nf(r.s.sefer)}</td></tr><tr><td>Giren</td><td>${nf(r.s.giren)} t</td></tr><tr><td>Net (bypassız)</td><td>${nf(r.s.net)} t</td></tr><tr><td>Günlük ortalama giren</td><td>${nf(r.s.gun?r.s.giren/r.s.gun:0)} t</td></tr></table>
+${d.note?`<p><b>Not:</b> ${esc(d.note)}</p>`:''}</div>`;
+$('#r_sh').onclick=()=>{const t=['*Günlük Üretim Raporu – '+r.tar+'*','Sefer: '+nf(d.sefer)+' → Giren: '+nf(r.g)+' t',...D.set.prods.filter(p=>r.o[p.id]).map(p=>p.name+': '+nf(r.o[p.id],2)+' t'),'Üretim toplam: '+nf(r.c,2)+' t',r.byp==null?'':'Bypass: '+nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',
+d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:''].filter(Boolean).join('\n');
+if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
 
 // ---------- AY ÖZETİ ----------
 V.ay=()=>{const s=mstat(curMonth),n=dim(curMonth),lab=[],vals=[];
