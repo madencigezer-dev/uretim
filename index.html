@@ -30,7 +30,7 @@ label{display:block;margin:8px 0;font-size:14px;color:var(--mut)}
 .kpi small{color:var(--mut);display:block;font-size:12px}.kpi b{font-size:19px}
 .mut{color:var(--mut);font-size:13px}
 table{border-collapse:collapse;width:100%;font-size:14px}
-.gt{font-size:10.6px;table-layout:auto;letter-spacing:-.3px}.gt td,.gt th{padding:4px 1px;white-space:nowrap}.gt th{font-size:10.5px}.gt small{color:#c2410c;font-size:10px;font-weight:700}@media(min-width:700px){.gt{font-size:14px}.gt th{font-size:13px}}
+.gt{font-size:10.6px;table-layout:auto;letter-spacing:-.3px}.gt td,.gt th{padding:4px 1px;white-space:nowrap}.gt th{font-size:10.5px}.gt small{color:#c2410c;font-size:10px;font-weight:700}.gt tr.pct td{color:#c2410c;font-weight:700;border-bottom:0}.gt th{white-space:normal;vertical-align:bottom}@media(min-width:700px){.gt{font-size:14px}.gt th{font-size:13px}}
 td,th{border-bottom:1px solid #e5e7eb;padding:6px 4px;text-align:right}
 td:first-child,th:first-child{text-align:left}
 tr.tot td{font-weight:700;border-top:2px solid #1d2430}
@@ -218,13 +218,14 @@ ${D.set.prods.map(p=>`<tr><td>${esc(pLbl(p.name))}</td><td>${nf(s.out[p.id],1)}<
 <tr class="tot"><td>Toplam</td><td>${nf(topCik,1)}</td><td></td></tr></table></div>
 <div class="card"><h3>Günler</h3>${(()=>{let TS=0,TG=0,TC=0,TB=0,TO={},rows='';
 s.ds.forEach(k=>{const o=D.days[k].out||{};D.set.prods.forEach(p=>TO[p.id]=(TO[p.id]||0)+(o[p.id]||0))});
-const P=D.set.prods,kl=n=>/^\d+$/.test(String(n).trim())?String(n).trim()+' No':n;
+const P=D.set.prods,kl=n=>{n=String(n).trim();const m=n.match(/\(([^)]*)\)/);return m?m[1].replace(/\s+/g,''):(/^\d+$/.test(n)?n+' No':n)};
 s.ds.forEach(k=>{const x=D.days[k],o=x.out||{},g=(x.sefer||0)*D.set.ton,c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),bp=c?g-c:null;
 TS+=x.sefer||0;TG+=g;if(c){TC+=c;TB+=bp}
 rows+=`<tr><td>${k.slice(8)}</td><td>${nf(x.sefer)}</td><td>${nf(g)}</td>${P.map(p=>`<td>${o[p.id]?nf(o[p.id]):'–'}</td>`).join('')}<td><b>${c?nf(c):'–'}</b></td><td>${bp==null?'–':nf(bp)}</td></tr>`});
 const pc=(v,t)=>t?`<br><small>%${nf(v/t*100,1)}</small>`:'';
 return `<table class="gt"><tr><th>Gün</th><th>Sefer</th><th>Giren</th>${P.map(p=>`<th>${esc(kl(p.name))}</th>`).join('')}<th>Üretim</th><th>Bypass</th></tr>${rows}
-<tr class="tot"><td>Top.</td><td>${nf(TS)}</td><td>${nf(TG)}</td>${P.map(p=>`<td>${nf(TO[p.id])}${pc(TO[p.id],TC)}</td>`).join('')}<td>${nf(TC)}</td><td>${nf(TB)}${pc(TB,TC+TB)}</td></tr></table>
+<tr class="tot"><td>Top.</td><td>${nf(TS)}</td><td>${nf(TG)}</td>${P.map(p=>`<td>${nf(TO[p.id])}</td>`).join('')}<td>${nf(TC)}</td><td>${nf(TB)}</td></tr>
+<tr class="pct"><td>%</td><td></td><td></td>${P.map(p=>`<td>${TC?nf(TO[p.id]/TC*100,1):''}</td>`).join('')}<td>${TC?'100':''}</td><td>${TC+TB?nf(TB/(TC+TB)*100,1):''}</td></tr></table>
 <p class="mut">Tonlar; ürün yüzdeleri üretim toplamına, bypass yüzdesi girene göre. Toplam satırı her yeni günde güncellenir.</p>`})()}</div>`;
 bars($('#cv'),lab,vals,'#fb923c')};
 
