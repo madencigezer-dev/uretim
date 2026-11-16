@@ -252,7 +252,7 @@ ${ms.map((m,i)=>{const s=st[i];return `<tr onclick="curMonth='${m}';go('mal')" s
 if(ms.length){const lb=ms.map(m=>m.slice(5)+'/'+m.slice(2,4));bars($('#cv1'),lb,st.map(s=>s.net>0?s.cost/s.net:0),'#1f6feb');bars($('#cv2'),lb,st.map(s=>s.giren),'#fb923c')}};
 
 // ---------- AYARLAR ----------
-V.ayar=()=>{const list=(arr,k)=>arr.map((x,i)=>`<div style="display:flex;gap:6px;margin:5px 0;align-items:center"><input data-${k}="${i}" value="${esc(x.name)}">${k==='m'?`<select data-mg="${i}" style="width:150px">${GRP.map(g=>`<option ${g===x.grp?'selected':''}>${g}</option>`).join('')}</select>`:''}<button class="b r s" onclick="delItem('${k}',${i})">✕</button></div>`).join('');
+V.ayar=()=>{const list=(arr,k)=>arr.map((x,i)=>`<div style="display:flex;gap:6px;margin:5px 0;align-items:center"><input data-${k}="${i}" value="${esc(x.name)}" style="min-width:0">${k==='m'?`<select data-mg="${i}" style="width:150px">${GRP.map(g=>`<option ${g===x.grp?'selected':''}>${g}</option>`).join('')}</select>`:''}<button class="b g s" onclick="moveItem('${k}',${i},-1)" ${i?'':'disabled'}>▲</button><button class="b g s" onclick="moveItem('${k}',${i},1)" ${i<arr.length-1?'':'disabled'}>▼</button><button class="b r s" onclick="delItem('${k}',${i})">✕</button></div>`).join('');
 app.innerHTML=`<div class="card"><h3>Genel</h3><div class="row"><label>Sefer başına ton<input type="number" step="any" id="a_t" value="${D.set.ton}"></label><label>Vardiya (saat/gün)<input type="number" step="any" id="a_v" value="${D.set.vardiya||11}"></label></div></div>
 <div class="card"><h3>Kantar ürünleri</h3>${list(D.set.prods,'p')}<button class="b g s" onclick="addItem('p')">+ Ürün ekle</button><p class="mut">Bypass = giren (sefer × ton) − kantar üretim toplamı.</p></div>
 <div class="card"><h3>Makineler</h3>${list(D.set.mach,'m')}<button class="b g s" onclick="addItem('m')">+ Makine ekle</button></div>
@@ -270,6 +270,7 @@ dl('﻿'+rows.map(r=>r.join(';')).join('\r\n'),'uretim_'+today()+'.csv','text/cs
 function readSet(){D.set.ton=+$('#a_t').value||36;D.set.vardiya=+$('#a_v').value||11;app.querySelectorAll('[data-p]').forEach(i=>D.set.prods[+i.dataset.p].name=i.value);app.querySelectorAll('[data-m]').forEach(i=>D.set.mach[+i.dataset.m].name=i.value);app.querySelectorAll('[data-mg]').forEach(i=>D.set.mach[+i.dataset.mg].grp=i.value);app.querySelectorAll('[data-c]').forEach(i=>D.set.costs[+i.dataset.c].name=i.value)}
 const ARR={p:'prods',c:'costs',m:'mach'};
 function addItem(k){readSet();const it={id:k+Date.now().toString(36),name:''};if(k==='m')it.grp='Diğer';D.set[ARR[k]].push(it);save();go('ayar')}
+function moveItem(k,i,d){readSet();const a=D.set[ARR[k]],j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];save();const y=window.scrollY;go('ayar');window.scrollTo(0,y)}
 function delItem(k,i){if(!confirm('Silinsin mi? (Eski kayıtlardaki değerleri raporlarda görünmez olur)'))return;readSet();D.set[ARR[k]].splice(i,1);save();go('ayar')}
 function dl(txt,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
 
