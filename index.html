@@ -53,7 +53,7 @@ mach:[['Hitachi 490','Ekskavatör (yükleme)'],['Volvo 480','Ekskavatör (yükle
 ['Volvo L150H','Loader'],['Hitachi 310V (yeni)','Loader'],['Hitachi 310V (eski)','Loader'],['Kawasaki 95Z','Loader'],['Kawasaki 90','Loader'],['Atlas Copco 580','Delici'],['Junjin 800E','Delici'],
 ...[1,2,3,4,5,6,7,8,9,10].map(i=>['Kamyon '+i,'Kamyon'])].map((m,i)=>({id:'m'+(i+1),name:m[0],grp:m[1]})),
 costs:['Personel (Maaş + SGK)','Akaryakıt (Mazot)','Elektrik','Patlayıcı Madde','Orman İşletme İzin Bedelleri','Devlet Hakkı, MTA ve Belediye Payı','Ruhsat Harcı','Danışmanlık ve ÇED','Yemekhane ve Sosyal','Atölye, Bakım ve Onarım','Genel İdare ve Diğer'].map((n,i)=>({id:'c'+(i+1),name:n}))};
-function load(){try{const d=JSON.parse(localStorage.getItem('ut_data'));if(d&&d.set){if(!d.set.mach)d.set.mach=JSON.parse(JSON.stringify(DEF.mach));if(!d.set.vardiya)d.set.vardiya=11;if(!d.set.pers)d.set.pers=[];if(!d.mesai)d.mesai={};if(!d.tatil)d.tatil={};return d}}catch(e){}const n={set:JSON.parse(JSON.stringify(DEF)),days:{},months:{},mesai:{},tatil:{}};n.set.pers=[];return n}
+function load(){try{const d=JSON.parse(localStorage.getItem('ut_data'));if(d&&d.set){if(!d.set.mach)d.set.mach=JSON.parse(JSON.stringify(DEF.mach));if(!d.set.vardiya)d.set.vardiya=11;if(!d.set.pers)d.set.pers=[];if(!d.mesai)d.mesai={};if(!d.tatil)d.tatil={};if(!d.mesNot)d.mesNot={};return d}}catch(e){}const n={set:JSON.parse(JSON.stringify(DEF)),days:{},months:{},mesai:{},tatil:{},mesNot:{}};n.set.pers=[];return n}
 let D=load();
 const save=()=>{try{localStorage.setItem('ut_data',JSON.stringify(D))}catch(e){}};
 const nf=(v,d=0)=>(+v||0).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -143,7 +143,7 @@ ${d.note?`<p><b>Not:</b> ${esc(d.note)}</p>`:''}</div>`;
 const mOn=()=>!!($('#r_mes')&&$('#r_mes').checked),rFile=()=>cvPdf(mOn()?[raporCanvas(r),mesaiCanvas(curDay)]:raporCanvas(r),(mOn()?'Uretim_Mesai_':'Uretim_Raporu_')+curDay+'.pdf');
 $('#r_pdf').onclick=()=>pdfGonder(rFile(),'Günlük Üretim Raporu '+r.tar);$('#r_pdi').onclick=()=>pdfIndir(rFile());
 $('#r_sh').onclick=()=>{const t=['*Günlük Üretim Raporu – '+r.tar+'*','Sefer: '+nf(d.sefer)+' → Giren: '+nf(r.g)+' t',...D.set.prods.filter(p=>r.o[p.id]).map(p=>p.name+': '+nf(r.o[p.id],2)+' t'),'Üretim toplam: '+nf(r.c,2)+' t',r.byp==null?'':'Bypass: '+nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',
-d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:'',mOn()&&D.mesai[curDay]?'Mesai: '+(()=>{const m=D.mesai[curDay],v=Object.values(m),t=v.reduce((a,b)=>a+b,0);return nf(t,1)+' saat, '+v.filter(x=>x>0).length+' kişi'+(isTatil(curDay)?' (tatil)':'')})():''].filter(Boolean).join('\n');
+d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:'',mOn()&&D.mesai[curDay]?'Mesai: '+(()=>{const m=D.mesai[curDay],v=Object.values(m),t=v.reduce((a,b)=>a+b,0);return nf(t,1)+' saat, '+v.filter(x=>x>0).length+' kişi'+(isTatil(curDay)?' (tatil)':'')+(D.mesNot[curDay]?' – '+D.mesNot[curDay]:'')})():''].filter(Boolean).join('\n');
 if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
 
 // ---------- PDF ----------
@@ -243,12 +243,14 @@ app.innerHTML=`<div class="card"><h3>Günlük mesai girişi</h3>
 <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"><input type="number" inputmode="decimal" step="any" id="ms_all" placeholder="Saat" style="width:80px"><button class="b g s" id="ms_ap">Hepsine yaz</button>${pk?`<button class="b g s" id="ms_cp">${pk.slice(8)}.${pk.slice(5,7)} gününü kopyala</button>`:''}</div>
 <div class="mut">Boş bırakılan 0 kaydedilir. İşe başlamamış / çıkmış kişi için <b>-</b> yaz, o gün sayılmaz.</div>
 ${P.map((p,i)=>`<div class="msrow" style="display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef0f3;padding:5px 4px"><span style="width:22px;color:#6b7280;font-size:13px">${i+1}</span><span style="flex:1;min-width:0"><b style="font-size:14px">${esc(p.name)}</b><div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.gorev||'')}</div></span><input type="text" inputmode="decimal" data-ms="${p.id}" value="${D.mesai[k]?(m[p.id]??'-'):''}" placeholder="0" style="width:70px;text-align:center"></div>`).join('')}
+<label style="color:#1d2430;font-weight:700;margin-top:12px">Mesai açıklaması<input id="ms_not" value="${esc(D.mesNot[k]||'')}" placeholder="Örn: Kırıcı arızası, gece sevkiyatı" maxlength="80"></label>
 <div class="mut" id="ms_sum" style="margin-top:8px"></div>
 <button class="b" id="ms_save">Kaydet</button>${D.mesai[k]?'<button class="b r" id="ms_del">Günü sil</button>':''}<span id="ms_ok" class="mut"></span></div>
 <div class="card"><h3>${ayAd(ym)} – 1'inden ${k.slice(8)}.${k.slice(5,7)}'e kadar (${st.ds.length} gün kayıtlı)</h3>
 <div class="scroll"><table><tr><th>#</th><th>Adı Soyadı</th><th>Hafta içi+Cmt</th><th>Pazar/Tatil</th><th>Toplam</th></tr>
 ${P.map((p,i)=>{const x=st.t[p.id];return `<tr><td>${i+1}</td><td>${esc(p.name)}</td><td>${nf(x.n,1)}</td><td>${nf(x.t,1)}</td><td><b>${nf(x.n+x.t,1)}</b></td></tr>`}).join('')}
 <tr class="tot"><td></td><td>TOPLAM</td><td>${nf(st.N,1)}</td><td>${nf(st.TT,1)}</td><td>${nf(st.N+st.TT,1)}</td></tr></table></div>
+${(()=>{const ns=Object.keys(D.mesNot).filter(x=>x.startsWith(ym)&&x<=k).sort();return ns.length?`<h3 style="margin-top:14px">Mesai açıklamaları</h3><table>${ns.map(x=>`<tr><td style="width:70px">${x.slice(8)}.${x.slice(5,7)}</td><td style="text-align:left">${esc(D.mesNot[x])}</td></tr>`).join('')}</table>`:''})()}
 <button class="b" id="ms_pdf">📄 PDF paylaş</button><button class="b" id="ms_pdi">⬇ PDF indir</button><button class="b g" id="ms_csv">Excel'e aktar</button>
 <p class="mut">PDF, ayın 1'inden seçili güne kadar gün gün mesai çizelgesidir (Excel formunla aynı düzen).</p></div>`;
 const val=v=>{v=v.trim().replace(',','.');return v==='-'?null:(v===''?0:(isNaN(+v)?0:+v))};
@@ -257,13 +259,14 @@ const msi=[...app.querySelectorAll('[data-ms]')];msi.forEach((i,j)=>{i.addEventL
 $('#ms_d').onchange=e=>{curMDay=e.target.value||curMDay;go('mes')};
 $('#ms_ap').onclick=()=>{const v=$('#ms_all').value;if(v==='')return;app.querySelectorAll('[data-ms]').forEach(i=>i.value=v);upd()};
 if($('#ms_cp'))$('#ms_cp').onclick=()=>{const o=D.mesai[pk];app.querySelectorAll('[data-ms]').forEach(i=>i.value=o[i.dataset.ms]??'-');upd()};
-$('#ms_save').onclick=()=>{const o={};app.querySelectorAll('[data-ms]').forEach(i=>{const v=val(i.value);if(v!=null)o[i.dataset.ms]=v});D.mesai[k]=o;if($('#ms_t')){if($('#ms_t').checked)D.tatil[k]=1;else delete D.tatil[k]}save();go('mes');$('#ms_ok').textContent=' Kaydedildi ✓'};
-if($('#ms_del'))$('#ms_del').onclick=async()=>{if(await ask(k.split('-').reverse().join('.')+' mesai kaydı silinsin mi?','Sil')){delete D.mesai[k];save();go('mes')}};
+$('#ms_save').onclick=()=>{const o={};app.querySelectorAll('[data-ms]').forEach(i=>{const v=val(i.value);if(v!=null)o[i.dataset.ms]=v});D.mesai[k]=o;const nt=$('#ms_not').value.trim();if(nt)D.mesNot[k]=nt;else delete D.mesNot[k];if($('#ms_t')){if($('#ms_t').checked)D.tatil[k]=1;else delete D.tatil[k]}save();go('mes');$('#ms_ok').textContent=' Kaydedildi ✓'};
+if($('#ms_del'))$('#ms_del').onclick=async()=>{if(await ask(k.split('-').reverse().join('.')+' mesai kaydı silinsin mi?','Sil')){delete D.mesai[k];delete D.mesNot[k];save();go('mes')}};
 const fn='Mesai_'+ym+'_'+k.slice(8)+'.pdf';
 $('#ms_pdf').onclick=()=>pdfGonder(cvPdf(mesaiCanvas(k),fn),'Mesai Çizelgesi '+ayAd(ym));$('#ms_pdi').onclick=()=>pdfIndir(cvPdf(mesaiCanvas(k),fn));
 $('#ms_csv').onclick=()=>{const n=+k.slice(8),days=[...Array(n)].map((_,i)=>ym+'-'+p2(i+1)),st2=mesStat(ym,k);
 const rows=[['Sıra','Adı Soyadı','Görevi',...days.map(d=>d.slice(8)+' '+GUNK[new Date(d+'T12:00').getDay()]+(isTatil(d)?' (T)':'')),'Hafta İçi+Cmt','Pazar/Tatil','Toplam']];
 D.set.pers.forEach((p,i)=>{const x=st2.t[p.id];rows.push([i+1,p.name,(p.gorev||'').replace(/;/g,','),...days.map(d=>{const v=(D.mesai[d]||{})[p.id];return v==null?'':String(v).replace('.',',')}),x.n,x.t,x.n+x.t].map(String))});
+const nots=days.filter(d=>D.mesNot[d]);if(nots.length){rows.push([]);rows.push(['','Mesai açıklamaları']);nots.forEach(d=>rows.push(['',d.split('-').reverse().join('.'),D.mesNot[d].replace(/;/g,',')]))}
 dl('﻿'+rows.map(r=>r.join(';')).join('\r\n'),'Mesai_'+ym+'.csv','text/csv')}};
 function mesaiCanvas(k){const ym=k.slice(0,7),n=+k.slice(8),P=D.set.pers,st=mesStat(ym,k),W=1754,H=1240,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
 c.fillStyle='#fff';c.fillRect(0,0,W,H);const F=(z,b)=>c.font=(b?'bold ':'')+z+'px Arial, sans-serif';const T=(t,x,y,al,col)=>{c.textAlign=al||'left';c.fillStyle=col||'#1d2430';c.fillText(t,x,y);c.textAlign='left'};
@@ -281,7 +284,8 @@ y+=rh*P.length;c.fillStyle='#1d2430';c.fillRect(L,y,W-2*L,2);const yy=y+rh*0.7;F
 for(let d=1;d<=n;d++){const m=D.mesai[ym+'-'+p2(d)];if(!m)continue;let t=0;P.forEach(p=>t+=m[p.id]||0);T(nf(t),xs+(d-1)*dw+dw/2,yy,'center')}
 [st.N,st.TT,st.N+st.TT].forEach((v,j)=>T(nf(v),sx+sumW*(j+.5),yy,'center'));
 c.strokeStyle='#d1d5db';c.lineWidth=1;for(let d=0;d<=n;d++){c.beginPath();c.moveTo(xs+d*dw,top);c.lineTo(xs+d*dw,y+rh);c.stroke()}for(let j=0;j<=3;j++){c.beginPath();c.moveTo(sx+j*sumW,top);c.lineTo(sx+j*sumW,y+rh);c.stroke()}
-F(16);T('Turuncu sütunlar: Pazar / resmi tatil.   Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-28,0,'#6b7280');return cv}
+F(16);{const ns=Object.keys(D.mesNot).filter(x=>x.startsWith(ym)&&x<=k).sort().map(x=>x.slice(8)+': '+D.mesNot[x]);if(ns.length){let t='Mesai açıklamaları – '+ns.join('   ·   ');while(c.measureText(t).width>W-2*L&&t.length>10)t=t.slice(0,-2);T(t,L,H-54)}}
+T('Turuncu sütunlar: Pazar / resmi tatil.   Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-28,0,'#6b7280');return cv}
 
 // ---------- MALİYET ----------
 V.mal=()=>{const m=D.months[curMonth]||(D.months[curMonth]={}),cs=m.costs||(m.costs={}),s=mstat(curMonth);
@@ -324,7 +328,7 @@ app.innerHTML=`<div class="card"><h3>Genel</h3><div class="row"><label>Sefer ba�
 $('#a_save').onclick=()=>{readSet();save();go('ayar')};
 $('#a_exp').onclick=()=>dl(JSON.stringify(D,null,1),'uretim_yedek_'+today()+'.json','application/json');
 $('#a_imp').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const x=JSON.parse(r.result);if(!x.set||(!x.days&&!x.mesai))throw 0;
-if(await ask('Yedekteki kayıtlar mevcut verinin üstüne eklensin mi? Aynı gün/ay varsa yedekteki geçerli olur.','Ekle')){Object.assign(D.days,x.days||{});Object.assign(D.months,x.months||{});Object.assign(D.mesai,x.mesai||{});Object.assign(D.tatil,x.tatil||{});(x.set.pers||[]).forEach(p=>{const e=D.set.pers.find(q=>q.id===p.id);if(e)Object.assign(e,p);else D.set.pers.push(p)});save();go(x.mesai?'mes':'kar')}}catch(err){ask('Dosya okunamadı.',null)}};r.readAsText(f)};
+if(await ask('Yedekteki kayıtlar mevcut verinin üstüne eklensin mi? Aynı gün/ay varsa yedekteki geçerli olur.','Ekle')){Object.assign(D.days,x.days||{});Object.assign(D.months,x.months||{});Object.assign(D.mesai,x.mesai||{});Object.assign(D.tatil,x.tatil||{});Object.assign(D.mesNot,x.mesNot||{});(x.set.pers||[]).forEach(p=>{const e=D.set.pers.find(q=>q.id===p.id);if(e)Object.assign(e,p);else D.set.pers.push(p)});save();go(x.mesai?'mes':'kar')}}catch(err){ask('Dosya okunamadı.',null)}};r.readAsText(f)};
 $('#a_csv').onclick=()=>{const P=D.set.prods,rows=[['Tarih','Sefer','Giren (ton)',...P.map(p=>p.name),'Duruş (saat)','Duruş sebebi','Arızalı makineler','Not']];
 Object.keys(D.days).sort().forEach(k=>{const x=D.days[k];rows.push([k,x.sefer||0,(x.sefer||0)*D.set.ton,...P.map(p=>String((x.out||{})[p.id]||0).replace('.',',')),String(x.durus||0).replace('.',','),(x.durusN||'').replace(/;/g,','),D.set.mach.filter(m=>(x.mk||{})[m.id]==='a').map(m=>m.name).join(', '),(x.note||'').replace(/;/g,',')])});
 dl('﻿'+rows.map(r=>r.join(';')).join('\r\n'),'uretim_'+today()+'.csv','text/csv')}};
