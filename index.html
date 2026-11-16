@@ -99,6 +99,7 @@ app.innerHTML=`<div class="card"><h3>Günlük giriş</h3>
 <div class="mut" id="g_t"></div>
 <h3 style="margin-top:14px">Kantar üretim raporu (ton)</h3>
 <div class="row">${D.set.prods.map(p=>`<label>${esc(p.name)}<input type="number" inputmode="decimal" step="any" data-p="${p.id}" value="${o[p.id]??''}"></label>`).join('')}</div>
+<div style="display:flex;gap:6px;margin:6px 0"><input id="g_pt" placeholder="Hazır metni yapıştır (0-5: 1152,64 | 1: 865,44 ...)"><button class="b g s" id="g_pb" style="white-space:nowrap">Doldur</button></div>
 <div class="mut" id="g_c"></div>
 <h3 style="margin-top:14px">Tesis duruşu</h3>
 <div class="row"><label>Duruş (saat)<input type="number" inputmode="decimal" step="any" id="g_du" value="${d.durus??''}"></label><label>Sebep<input id="g_dn" value="${esc(d.durusN)}"></label></div>
@@ -112,6 +113,8 @@ const upd=()=>{const g=(+$('#g_s').value||0)*D.set.ton;$('#g_t').textContent='Gi
 upd();app.querySelectorAll('input').forEach(i=>i.addEventListener('input',upd));
 app.querySelectorAll('[data-mk]').forEach(se=>se.onchange=()=>{const n=app.querySelector('[data-mn="'+se.dataset.mk+'"]');n.style.display=se.value==='c'?'none':'';se.style.background=se.value==='c'?'':'#fee2e2'});
 $('#g_d').onchange=e=>{curDay=e.target.value||curDay;go('gun')};
+$('#g_pb').onclick=()=>{let n=0;$('#g_pt').value.split(/[|;\n]/).forEach(part=>{const i=part.lastIndexOf(':');if(i<0)return;const k=part.slice(0,i).trim().toLowerCase();let v=part.slice(i+1).trim().replace(/[^\d.,-]/g,'');if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');
+const p=D.set.prods.find(x=>x.name.trim().toLowerCase()===k);if(p&&v!==''&&!isNaN(+v)){app.querySelector('[data-p="'+p.id+'"]').value=+v||'';n++}});upd();$('#g_pt').value='';$('#g_pt').placeholder=n?n+' ürün dolduruldu ✓':'Eşleşen ürün bulunamadı'};
 $('#g_save').onclick=()=>{const out={},mk={},mkn={};app.querySelectorAll('[data-p]').forEach(i=>{if(i.value!=='')out[i.dataset.p]=+i.value});
 app.querySelectorAll('[data-mk]').forEach(i=>{mk[i.dataset.mk]=i.value;const n=app.querySelector('[data-mn="'+i.dataset.mk+'"]').value;if(i.value!=='c'&&n)mkn[i.dataset.mk]=n});
 D.days[curDay]={sefer:+$('#g_s').value||0,out,note:$('#g_n').value,durus:+$('#g_du').value||0,durusN:$('#g_dn').value,mk,mkn};save();curMonth=curDay.slice(0,7);go('gun');$('#g_ok').textContent=' Kaydedildi ✓'};
@@ -121,8 +124,8 @@ if($('#g_del'))$('#g_del').onclick=()=>{if(confirm(curDay+' kaydı silinsin mi?'
 function rapData(){const d=D.days[curDay],g=(d.sefer||0)*D.set.ton,o=d.out||{},c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),mk=d.mk||{},s=mstat(curDay.slice(0,7));
 const by=st=>D.set.mach.filter(m=>mk[m.id]===st);return{d,g,o,c,byp:c?g-c:null,mk,s,by,tar:curDay.slice(8)+'.'+curDay.slice(5,7)+'.'+curDay.slice(0,4)}}
 V.rap=()=>{const r=rapData(),d=r.d,nm=m=>esc(m.name)+((d.mkn||{})[m.id]?' ('+esc(d.mkn[m.id])+')':'');
-app.innerHTML=`<div class="card noprint"><button class="b" onclick="window.print()">PDF olarak kaydet / Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
-<p class="mut">PDF için: açılan pencerede yazıcı olarak "PDF olarak kaydet"i seç, sonra dosyayı WhatsApp'tan gönder.</p></div>
+app.innerHTML=`<div class="card noprint"><button class="b" id="r_pdf">📄 PDF paylaş</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
+<p class="mut">PDF paylaş: rapor PDF olarak hazırlanır, paylaş menüsünden WhatsApp'ı seçersin.</p></div>
 <div class="card"><h3 style="font-size:19px">Günlük Üretim Raporu – ${r.tar}</h3>
 <table><tr><th>Üretim</th><th></th></tr><tr><td>Sefer</td><td>${nf(d.sefer)}</td></tr><tr><td>Giren (sefer × ${D.set.ton} t)</td><td>${nf(r.g)} t</td></tr>
 ${D.set.prods.map(p=>`<tr><td>Kantar ${esc(p.name)}</td><td>${r.o[p.id]?nf(r.o[p.id],2)+' t':'–'}</td></tr>`).join('')}
@@ -133,9 +136,44 @@ ${D.set.prods.map(p=>`<tr><td>Kantar ${esc(p.name)}</td><td>${r.o[p.id]?nf(r.o[p
 <h3 style="margin-top:14px">${ayAd(curDay.slice(0,7))} – ay toplamı</h3>
 <table><tr><td>Çalışılan gün</td><td>${r.s.gun}</td></tr><tr><td>Sefer</td><td>${nf(r.s.sefer)}</td></tr><tr><td>Giren</td><td>${nf(r.s.giren)} t</td></tr><tr><td>Net (bypassız)</td><td>${nf(r.s.net)} t</td></tr><tr><td>Günlük ortalama giren</td><td>${nf(r.s.gun?r.s.giren/r.s.gun:0)} t</td></tr></table>
 ${d.note?`<p><b>Not:</b> ${esc(d.note)}</p>`:''}</div>`;
+$('#r_pdf').onclick=()=>pdfPaylas(r);
 $('#r_sh').onclick=()=>{const t=['*Günlük Üretim Raporu – '+r.tar+'*','Sefer: '+nf(d.sefer)+' → Giren: '+nf(r.g)+' t',...D.set.prods.filter(p=>r.o[p.id]).map(p=>p.name+': '+nf(r.o[p.id],2)+' t'),'Üretim toplam: '+nf(r.c,2)+' t',r.byp==null?'':'Bypass: '+nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',
 d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:''].filter(Boolean).join('\n');
 if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
+
+// ---------- PDF ----------
+function raporCanvas(r){const d=r.d,W=1240,H=1754,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
+c.fillStyle='#fff';c.fillRect(0,0,W,H);let y=110;const L=90,R=W-90;
+const F=(sz,b)=>c.font=(b?'bold ':'')+sz+'px Arial, sans-serif';
+c.fillStyle='#1d2430';c.fillRect(0,0,W,70);F(30,1);c.fillStyle='#fff';c.fillText('AYTAŞ – Günlük Üretim Raporu',L,46);c.textAlign='right';c.fillText(r.tar,R,46);c.textAlign='left';
+const head=t=>{y+=30;F(30,1);c.fillStyle='#c2410c';c.fillText(t,L,y);y+=14;c.fillRect(L,y,R-L,3);y+=46};
+const row=(k,v,bold)=>{F(26,bold);c.fillStyle='#1d2430';c.fillText(k,L,y);c.textAlign='right';
+let t=String(v);while(c.measureText(t).width>R-L-380&&t.length>5)t=t.slice(0,-2);if(t!==String(v))t+='…';c.fillText(t,R,y);c.textAlign='left';
+c.fillStyle='#e5e7eb';c.fillRect(L,y+14,R-L,1);y+=48};
+head('Üretim');row('Sefer',nf(d.sefer));row('Giren (sefer × '+D.set.ton+' t)',nf(r.g)+' t');
+D.set.prods.forEach(p=>row('Kantar '+p.name,r.o[p.id]?nf(r.o[p.id],2)+' t':'–'));
+row('Kantar üretim toplam',nf(r.c,2)+' t',1);row('Bypass',r.byp==null?'–':nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',1);
+row('Tesis duruşu',d.durus?nf(d.durus,1)+' saat'+(d.durusN?' – '+d.durusN:''):'Yok');
+head('Makine durumu');row('Çalışan',r.by('c').length+' / '+D.set.mach.length);
+const nm=m=>m.name+((d.mkn||{})[m.id]?' ('+d.mkn[m.id]+')':'');
+[['Arızalı','a'],['Bakımda','b'],['Yedekte','y']].forEach(([k,st])=>{const l=r.by(st);if(!l.length){row(k,'Yok');return}
+F(26,1);c.fillStyle='#1d2430';c.fillText(k,L,y);F(26);let x=L+200;l.map(nm).forEach((t,i)=>{t+=(i<l.length-1?',  ':'');const w=c.measureText(t).width;if(x+w>R){x=L+200;y+=38}c.fillText(t,x,y);x+=w});c.fillStyle='#e5e7eb';c.fillRect(L,y+14,R-L,1);y+=48});
+head(ayAd(curDay.slice(0,7))+' – ay toplamı');row('Çalışılan gün',r.s.gun);row('Sefer',nf(r.s.sefer));row('Giren',nf(r.s.giren)+' t');row('Bypass',nf(r.s.byp)+' t');row('Net (bypassız)',nf(r.s.net)+' t',1);row('Günlük ortalama giren',nf(r.s.gun?r.s.giren/r.s.gun:0)+' t');
+if(d.note){y+=10;F(26,1);c.fillStyle='#1d2430';c.fillText('Not:',L,y);F(26);c.fillText(d.note.slice(0,80),L+80,y)}
+F(20);c.fillStyle='#6b7280';c.fillText('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-50);return cv}
+function jpgPdf(jpg,w,h){const enc=new TextEncoder(),parts=[],off=[];let len=0;const add=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
+const PW=595.28,PH=841.89;add('%PDF-1.4\n');
+const obj=(n,body,stream)=>{off[n]=len;add(n+' 0 obj\n'+body);if(stream){add('stream\n');add(stream);add('\nendstream')}add('\nendobj\n')};
+obj(1,'<< /Type /Catalog /Pages 2 0 R >>');obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
+obj(4,'<< /Type /XObject /Subtype /Image /Width '+w+' /Height '+h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\n',jpg);
+const cs='q '+PW+' 0 0 '+PH+' 0 0 cm /Im0 Do Q';obj(5,'<< /Length '+cs.length+' >>\n',enc.encode(cs));
+const xo=len;let x='xref\n0 6\n0000000000 65535 f \n';for(let i=1;i<=5;i++)x+=String(off[i]).padStart(10,'0')+' 00000 n \n';
+add(x+'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xo+'\n%%EOF');return new Blob(parts,{type:'application/pdf'})}
+async function pdfPaylas(r){const cv=raporCanvas(r),u=cv.toDataURL('image/jpeg',0.9),b=atob(u.split(',')[1]),j=new Uint8Array(b.length);for(let i=0;i<b.length;i++)j[i]=b.charCodeAt(i);
+const name='Uretim_Raporu_'+curDay+'.pdf',f=new File([jpgPdf(j,cv.width,cv.height)],name,{type:'application/pdf'});
+if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:'Günlük Üretim Raporu '+r.tar})}catch(e){}}
+else{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=name;a.click()}}
 
 // ---------- AY ÖZETİ ----------
 V.ay=()=>{const s=mstat(curMonth),n=dim(curMonth),lab=[],vals=[];
