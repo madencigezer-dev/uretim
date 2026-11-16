@@ -18,6 +18,7 @@ nav{display:flex;background:#273142;position:sticky;top:46px;z-index:5;overflow-
 nav button{flex:1;background:none;border:0;color:#cbd5e1;padding:12px 8px;font-size:14px;white-space:nowrap;border-bottom:3px solid transparent}
 nav button.on{color:#fff;border-bottom-color:#fb923c}
 main{max-width:900px;margin:0 auto;padding:12px}
+.msrow:focus-within{background:#e5e7eb;border-radius:6px}.msrow:focus-within b{color:#c2410c}
 .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:12px}
 .b{background:var(--acc);color:#fff;border:0;padding:11px 16px;border-radius:10px;font-size:15px;margin:4px 4px 4px 0;cursor:pointer}
 .b.g{background:#475569}.b.r{background:var(--bad)}.b.s{padding:5px 10px;font-size:13px}
@@ -127,7 +128,7 @@ if($('#g_del'))$('#g_del').onclick=async()=>{if(await ask(curDay.split('-').reve
 function rapData(){const d=D.days[curDay],g=(d.sefer||0)*D.set.ton,o=d.out||{},c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),mk=d.mk||{},s=mstat(curDay.slice(0,7));
 const by=st=>D.set.mach.filter(m=>mk[m.id]===st);return{d,g,o,c,byp:c?g-c:null,mk,s,by,tar:curDay.slice(8)+'.'+curDay.slice(5,7)+'.'+curDay.slice(0,4)}}
 V.rap=()=>{const r=rapData(),d=r.d,nm=m=>esc(m.name)+((d.mkn||{})[m.id]?' ('+esc(d.mkn[m.id])+')':'');
-app.innerHTML=`<div class="card noprint"><button class="b" id="r_pdf">📄 PDF paylaş</button><button class="b" id="r_pdi">⬇ PDF indir</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
+app.innerHTML=`<div class="card noprint"><label style="display:flex;gap:8px;align-items:center;color:#1d2430;font-size:15px;margin:2px 0 8px">${D.set.pers.length?`<input type="checkbox" id="r_mes" style="width:22px;height:22px" ${D.mesai[curDay]?'checked':''}> Mesai çizelgesini de ekle${D.mesai[curDay]?'':' <span class="mut">(bu güne mesai girilmemiş)</span>'}`:''}</label><button class="b" id="r_pdf">📄 PDF paylaş</button><button class="b" id="r_pdi">⬇ PDF indir</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
 <p class="mut">PDF paylaş: rapor PDF olarak hazırlanır, paylaş menüsünden WhatsApp'ı seçersin.</p></div>
 <div class="card"><h3 style="font-size:19px">Günlük Üretim Raporu – ${r.tar}</h3>
 <table><tr><th>Üretim</th><th></th></tr><tr><td>Sefer</td><td>${nf(d.sefer)}</td></tr><tr><td>Giren (sefer × ${D.set.ton} t)</td><td>${nf(r.g)} t</td></tr>
@@ -139,9 +140,10 @@ ${D.set.prods.map(p=>`<tr><td>Kantar ${esc(p.name)}</td><td>${r.o[p.id]?nf(r.o[p
 <h3 style="margin-top:14px">${ayAd(curDay.slice(0,7))} – ay toplamı</h3>
 <table><tr><td>Çalışılan gün</td><td>${r.s.gun}</td></tr><tr><td>Sefer</td><td>${nf(r.s.sefer)}</td></tr><tr><td>Giren</td><td>${nf(r.s.giren)} t</td></tr><tr><td>Net (bypassız)</td><td>${nf(r.s.net)} t</td></tr><tr><td>Günlük ortalama giren</td><td>${nf(r.s.gun?r.s.giren/r.s.gun:0)} t</td></tr></table>
 ${d.note?`<p><b>Not:</b> ${esc(d.note)}</p>`:''}</div>`;
-$('#r_pdf').onclick=()=>pdfPaylas(r);$('#r_pdi').onclick=()=>pdfIndir(cvPdf(raporCanvas(r),'Uretim_Raporu_'+curDay+'.pdf'));
+const mOn=()=>!!($('#r_mes')&&$('#r_mes').checked),rFile=()=>cvPdf(mOn()?[raporCanvas(r),mesaiCanvas(curDay)]:raporCanvas(r),(mOn()?'Uretim_Mesai_':'Uretim_Raporu_')+curDay+'.pdf');
+$('#r_pdf').onclick=()=>pdfGonder(rFile(),'Günlük Üretim Raporu '+r.tar);$('#r_pdi').onclick=()=>pdfIndir(rFile());
 $('#r_sh').onclick=()=>{const t=['*Günlük Üretim Raporu – '+r.tar+'*','Sefer: '+nf(d.sefer)+' → Giren: '+nf(r.g)+' t',...D.set.prods.filter(p=>r.o[p.id]).map(p=>p.name+': '+nf(r.o[p.id],2)+' t'),'Üretim toplam: '+nf(r.c,2)+' t',r.byp==null?'':'Bypass: '+nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',
-d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:''].filter(Boolean).join('\n');
+d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:'',mOn()&&D.mesai[curDay]?'Mesai: '+(()=>{const m=D.mesai[curDay],v=Object.values(m),t=v.reduce((a,b)=>a+b,0);return nf(t,1)+' saat, '+v.filter(x=>x>0).length+' kişi'+(isTatil(curDay)?' (tatil)':'')})():''].filter(Boolean).join('\n');
 if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
 
 // ---------- PDF ----------
@@ -184,16 +186,17 @@ if(bold){c.fillStyle='#fff7ed';c.fillRect(L,y-rh+6,R-L,rh)}
 F(fs,1);c.fillStyle='#1d2430';c.fillRect(L,y-rh+8,R-L,2);y+=4;['Toplam',nf(s.sefer),nf(s.giren),nf(s.cik),nf(s.byp),nf(s.durus,1)].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));
 if(d.note){F(20);T('Not: '+fit(d.note,R-L-60),L,H-75)}
 F(18);T('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-40,0,'#6b7280');return cv}
-function jpgPdf(jpg,w,h){const enc=new TextEncoder(),parts=[],off=[];let len=0;const add=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
-const PW=w>h?841.89:595.28,PH=w>h?595.28:841.89;add('%PDF-1.4\n');
+function jpgPdf(pages){const enc=new TextEncoder(),parts=[],off=[];let len=0;const add=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
 const obj=(n,body,stream)=>{off[n]=len;add(n+' 0 obj\n'+body);if(stream){add('stream\n');add(stream);add('\nendstream')}add('\nendobj\n')};
-obj(1,'<< /Type /Catalog /Pages 2 0 R >>');obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
-obj(4,'<< /Type /XObject /Subtype /Image /Width '+w+' /Height '+h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\n',jpg);
-const cs='q '+PW+' 0 0 '+PH+' 0 0 cm /Im0 Do Q';obj(5,'<< /Length '+cs.length+' >>\n',enc.encode(cs));
-const xo=len;let x='xref\n0 6\n0000000000 65535 f \n';for(let i=1;i<=5;i++)x+=String(off[i]).padStart(10,'0')+' 00000 n \n';
-add(x+'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xo+'\n%%EOF');return new Blob(parts,{type:'application/pdf'})}
-function cvPdf(cv,name){const u=cv.toDataURL('image/jpeg',0.9),b=atob(u.split(',')[1]),j=new Uint8Array(b.length);for(let i=0;i<b.length;i++)j[i]=b.charCodeAt(i);return new File([jpgPdf(j,cv.width,cv.height)],name,{type:'application/pdf'})}
+add('%PDF-1.4\n');const n=pages.length,kids=pages.map((_,i)=>(3+i*3)+' 0 R').join(' ');
+obj(1,'<< /Type /Catalog /Pages 2 0 R >>');obj(2,'<< /Type /Pages /Kids ['+kids+'] /Count '+n+' >>');
+pages.forEach((p,i)=>{const b=3+i*3,PW=p.w>p.h?841.89:595.28,PH=p.w>p.h?595.28:841.89;
+obj(b,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /XObject << /Im0 '+(b+1)+' 0 R >> >> /Contents '+(b+2)+' 0 R >>');
+obj(b+1,'<< /Type /XObject /Subtype /Image /Width '+p.w+' /Height '+p.h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+p.jpg.length+' >>\n',p.jpg);
+const cs='q '+PW+' 0 0 '+PH+' 0 0 cm /Im0 Do Q';obj(b+2,'<< /Length '+cs.length+' >>\n',enc.encode(cs))});
+const tot=3+n*3,xo=len;let x='xref\n0 '+tot+'\n0000000000 65535 f \n';for(let i=1;i<tot;i++)x+=String(off[i]).padStart(10,'0')+' 00000 n \n';
+add(x+'trailer\n<< /Size '+tot+' /Root 1 0 R >>\nstartxref\n'+xo+'\n%%EOF');return new Blob(parts,{type:'application/pdf'})}
+function cvPdf(cvs,name){if(!Array.isArray(cvs))cvs=[cvs];const pages=cvs.map(cv=>{const u=cv.toDataURL('image/jpeg',0.9),b=atob(u.split(',')[1]),j=new Uint8Array(b.length);for(let i=0;i<b.length;i++)j[i]=b.charCodeAt(i);return{jpg:j,w:cv.width,h:cv.height}});return new File([jpgPdf(pages)],name,{type:'application/pdf'})}
 function pdfIndir(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000)}
 async function pdfGonder(f,title){if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title})}catch(e){}}else pdfIndir(f)}
 const pdfPaylas=r=>pdfGonder(cvPdf(raporCanvas(r),'Uretim_Raporu_'+curDay+'.pdf'),'Günlük Üretim Raporu '+r.tar);
@@ -238,8 +241,8 @@ if(!P.length){app.innerHTML=`<div class="card"><h3>Mesai</h3><p>Personel listesi
 app.innerHTML=`<div class="card"><h3>Günlük mesai girişi</h3>
 <div class="row"><label>Tarih<input type="date" id="ms_d" value="${k}"></label><label style="align-self:end">${isPaz(k)?'<b style="color:#c2410c">Pazar – tatil mesaisi</b>':`<span style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="ms_t" style="width:auto" ${D.tatil[k]?'checked':''}> Resmi tatil</span>`}</label></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"><input type="number" inputmode="decimal" step="any" id="ms_all" placeholder="Saat" style="width:80px"><button class="b g s" id="ms_ap">Hepsine yaz</button>${pk?`<button class="b g s" id="ms_cp">${pk.slice(8)}.${pk.slice(5,7)} gününü kopyala</button>`:''}</div>
-<div class="mut">Boş bırakılan kişi o gün kayıtsız sayılır (işe başlamamış, izinli vb.).</div>
-${P.map((p,i)=>`<div style="display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef0f3;padding:5px 0"><span style="width:22px;color:#6b7280;font-size:13px">${i+1}</span><span style="flex:1;min-width:0"><b style="font-size:14px">${esc(p.name)}</b><div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.gorev||'')}</div></span><input type="number" inputmode="decimal" step="any" data-ms="${p.id}" value="${m[p.id]??''}" style="width:70px;text-align:center"></div>`).join('')}
+<div class="mut">Boş bırakılan 0 kaydedilir. İşe başlamamış / çıkmış kişi için <b>-</b> yaz, o gün sayılmaz.</div>
+${P.map((p,i)=>`<div class="msrow" style="display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef0f3;padding:5px 4px"><span style="width:22px;color:#6b7280;font-size:13px">${i+1}</span><span style="flex:1;min-width:0"><b style="font-size:14px">${esc(p.name)}</b><div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.gorev||'')}</div></span><input type="text" inputmode="decimal" data-ms="${p.id}" value="${D.mesai[k]?(m[p.id]??'-'):''}" placeholder="0" style="width:70px;text-align:center"></div>`).join('')}
 <div class="mut" id="ms_sum" style="margin-top:8px"></div>
 <button class="b" id="ms_save">Kaydet</button>${D.mesai[k]?'<button class="b r" id="ms_del">Günü sil</button>':''}<span id="ms_ok" class="mut"></span></div>
 <div class="card"><h3>${ayAd(ym)} – 1'inden ${k.slice(8)}.${k.slice(5,7)}'e kadar (${st.ds.length} gün kayıtlı)</h3>
@@ -248,12 +251,13 @@ ${P.map((p,i)=>{const x=st.t[p.id];return `<tr><td>${i+1}</td><td>${esc(p.name)}
 <tr class="tot"><td></td><td>TOPLAM</td><td>${nf(st.N,1)}</td><td>${nf(st.TT,1)}</td><td>${nf(st.N+st.TT,1)}</td></tr></table></div>
 <button class="b" id="ms_pdf">📄 PDF paylaş</button><button class="b" id="ms_pdi">⬇ PDF indir</button><button class="b g" id="ms_csv">Excel'e aktar</button>
 <p class="mut">PDF, ayın 1'inden seçili güne kadar gün gün mesai çizelgesidir (Excel formunla aynı düzen).</p></div>`;
-const upd=()=>{let t=0,n=0;app.querySelectorAll('[data-ms]').forEach(i=>{if(i.value!==''){t+=+i.value;n++}});$('#ms_sum').textContent=n+' kişi girildi, günlük toplam '+nf(t,1)+' saat'};upd();
-app.querySelectorAll('[data-ms]').forEach(i=>i.addEventListener('input',upd));
+const val=v=>{v=v.trim().replace(',','.');return v==='-'?null:(v===''?0:(isNaN(+v)?0:+v))};
+const upd=()=>{let t=0,n=0;app.querySelectorAll('[data-ms]').forEach(i=>{const v=val(i.value);if(v!=null){t+=v;if(v>0)n++}});$('#ms_sum').textContent=n+' kişi mesaili, günlük toplam '+nf(t,1)+' saat'};upd();
+const msi=[...app.querySelectorAll('[data-ms]')];msi.forEach((i,j)=>{i.addEventListener('input',upd);i.addEventListener('focus',()=>i.select());i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();(msi[j+1]||$('#ms_save')).focus()}})});
 $('#ms_d').onchange=e=>{curMDay=e.target.value||curMDay;go('mes')};
 $('#ms_ap').onclick=()=>{const v=$('#ms_all').value;if(v==='')return;app.querySelectorAll('[data-ms]').forEach(i=>i.value=v);upd()};
-if($('#ms_cp'))$('#ms_cp').onclick=()=>{const o=D.mesai[pk];app.querySelectorAll('[data-ms]').forEach(i=>i.value=o[i.dataset.ms]??'');upd()};
-$('#ms_save').onclick=()=>{const o={};app.querySelectorAll('[data-ms]').forEach(i=>{if(i.value!=='')o[i.dataset.ms]=+i.value});D.mesai[k]=o;if($('#ms_t')){if($('#ms_t').checked)D.tatil[k]=1;else delete D.tatil[k]}save();go('mes');$('#ms_ok').textContent=' Kaydedildi ✓'};
+if($('#ms_cp'))$('#ms_cp').onclick=()=>{const o=D.mesai[pk];app.querySelectorAll('[data-ms]').forEach(i=>i.value=o[i.dataset.ms]??'-');upd()};
+$('#ms_save').onclick=()=>{const o={};app.querySelectorAll('[data-ms]').forEach(i=>{const v=val(i.value);if(v!=null)o[i.dataset.ms]=v});D.mesai[k]=o;if($('#ms_t')){if($('#ms_t').checked)D.tatil[k]=1;else delete D.tatil[k]}save();go('mes');$('#ms_ok').textContent=' Kaydedildi ✓'};
 if($('#ms_del'))$('#ms_del').onclick=async()=>{if(await ask(k.split('-').reverse().join('.')+' mesai kaydı silinsin mi?','Sil')){delete D.mesai[k];save();go('mes')}};
 const fn='Mesai_'+ym+'_'+k.slice(8)+'.pdf';
 $('#ms_pdf').onclick=()=>pdfGonder(cvPdf(mesaiCanvas(k),fn),'Mesai Çizelgesi '+ayAd(ym));$('#ms_pdi').onclick=()=>pdfIndir(cvPdf(mesaiCanvas(k),fn));
