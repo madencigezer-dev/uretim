@@ -30,6 +30,7 @@ label{display:block;margin:8px 0;font-size:14px;color:var(--mut)}
 .kpi small{color:var(--mut);display:block;font-size:12px}.kpi b{font-size:19px}
 .mut{color:var(--mut);font-size:13px}
 table{border-collapse:collapse;width:100%;font-size:14px}
+.gt td,.gt th{white-space:nowrap}.gt small{color:#c2410c;font-size:11px}
 td,th{border-bottom:1px solid #e5e7eb;padding:6px 4px;text-align:right}
 td:first-child,th:first-child{text-align:left}
 tr.tot td{font-weight:700;border-top:2px solid #1d2430}
@@ -183,8 +184,8 @@ F(20,1);cols.forEach(([t,x,al])=>T(t,x,y,al?'right':'left','#6b7280'));y+=8;c.fi
 const rows=s.ds,avail=H-60-y-40,rh=Math.max(16,Math.min(30,avail/Math.max(rows.length+1,1))),fs=Math.max(13,Math.min(20,rh-8));
 rows.forEach(k=>{const x=D.days[k],g=(x.sefer||0)*D.set.ton,cc=D.set.prods.reduce((t,p)=>t+((x.out||{})[p.id]||0),0),bold=k===curDay;F(fs,bold);
 if(bold){c.fillStyle='#fff7ed';c.fillRect(L,y-rh+6,R-L,rh)}
-[k.slice(8)+'.'+k.slice(5,7)+(x.durusN?'  '+fit(x.durusN,140):''),nf(x.sefer),nf(g),cc?nf(cc):'–',cc?nf(g-cc):'–',x.durus?nf(x.durus,1):''].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));y+=rh});
-F(fs,1);c.fillStyle='#1d2430';c.fillRect(L,y-rh+8,R-L,2);y+=4;['Toplam',nf(s.sefer),nf(s.giren),nf(s.cik),nf(s.byp),nf(s.durus,1)].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));
+[k.slice(8)+'.'+k.slice(5,7)+(x.durusN?'  '+fit(x.durusN,140):''),nf(x.sefer),nf(g),cc?nf(cc):'–',cc?nf(g-cc)+'  (%'+nf((g-cc)/g*100,1)+')':'–',x.durus?nf(x.durus,1):''].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));y+=rh});
+F(fs,1);c.fillStyle='#1d2430';c.fillRect(L,y-rh+8,R-L,2);y+=4;['Toplam',nf(s.sefer),nf(s.giren),nf(s.cik),nf(s.byp)+'  (%'+nf(s.giren?s.byp/s.giren*100:0,1)+')',nf(s.durus,1)].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));
 if(d.note){F(20);T('Not: '+fit(d.note,R-L-60),L,H-75)}
 F(18);T('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-40,0,'#6b7280');return cv}
 function jpgPdf(pages){const enc=new TextEncoder(),parts=[],off=[];let len=0;const add=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
@@ -215,8 +216,13 @@ ${s.man?'<div class="info">Bu ayda günlük kayıt yok; ay toplamı Maliyet ekra
 <div class="card"><h3>Kantar üretimi (ürün bazında)</h3><table><tr><th>Ürün</th><th>Ton</th><th>Pay</th></tr>
 ${D.set.prods.map(p=>`<tr><td>${esc(pLbl(p.name))}</td><td>${nf(s.out[p.id],1)}</td><td>%${nf(topCik?(s.out[p.id]||0)/topCik*100:0,1)}</td></tr>`).join('')}
 <tr class="tot"><td>Toplam</td><td>${nf(topCik,1)}</td><td></td></tr></table></div>
-<div class="card"><h3>Günler</h3><div class="scroll"><table><tr><th>Gün</th><th>Sefer</th><th>Giren</th>${D.set.prods.map(p=>`<th>${esc(p.name)}</th>`).join('')}<th>Not</th></tr>
-${s.ds.map(k=>{const x=D.days[k];return `<tr><td>${k.slice(8)}</td><td>${nf(x.sefer)}</td><td>${nf((x.sefer||0)*D.set.ton)}</td>${D.set.prods.map(p=>`<td>${nf((x.out||{})[p.id],1)}</td>`).join('')}<td>${esc(x.note)}</td></tr>`}).join('')}</table></div></div>`;
+<div class="card"><h3>Günler</h3><div class="scroll"><table class="gt"><tr><th>Gün</th><th>Sefer</th><th>Giren (t)</th>${D.set.prods.map(p=>`<th>${esc(pLbl(p.name))}</th>`).join('')}<th>Üretim (t)</th><th>Bypass (t)</th><th>Not</th></tr>
+${(()=>{let TS=0,TG=0,TC=0,TB=0,TO={},rows='';s.ds.forEach(k=>{const x=D.days[k],o=x.out||{},g=(x.sefer||0)*D.set.ton,c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),bp=c?g-c:null;
+TS+=x.sefer||0;TG+=g;if(c){TC+=c;TB+=bp;D.set.prods.forEach(p=>TO[p.id]=(TO[p.id]||0)+(o[p.id]||0))}
+const pc=(v,t)=>t?`<small>%${nf(v/t*100,1)}</small>`:'';
+rows+=`<tr><td>${k.slice(8)}.${k.slice(5,7)}</td><td>${nf(x.sefer)}</td><td>${nf(g)}</td>${D.set.prods.map(p=>`<td>${o[p.id]?nf(o[p.id],1)+'<br>'+pc(o[p.id],c):'–'}</td>`).join('')}<td><b>${c?nf(c,1):'–'}</b></td><td>${bp==null?'–':nf(bp,1)+'<br>'+pc(bp,g)}</td><td style="text-align:left">${esc(x.note)}</td></tr>`});
+const pc=(v,t)=>t?`<br><small>%${nf(v/t*100,1)}</small>`:'';
+return rows+`<tr class="tot"><td>Toplam</td><td>${nf(TS)}</td><td>${nf(TG)}</td>${D.set.prods.map(p=>`<td>${nf(TO[p.id]||0)}${pc(TO[p.id]||0,TC)}</td>`).join('')}<td>${nf(TC)}</td><td>${nf(TB)}${pc(TB,TC+TB)}</td><td style="text-align:left;font-weight:400"><small>Toplam satırı her yeni günde kendini günceller</small></td></tr>`})()}</table></div></div>`;
 bars($('#cv'),lab,vals,'#fb923c')};
 
 // ---------- MAKİNE ----------
