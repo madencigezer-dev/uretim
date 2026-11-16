@@ -52,7 +52,7 @@ mach:[['Hitachi 490','Ekskavatör (yükleme)'],['Volvo 480','Ekskavatör (yükle
 ['Volvo L150H','Loader'],['Hitachi 310V (yeni)','Loader'],['Hitachi 310V (eski)','Loader'],['Kawasaki 95Z','Loader'],['Kawasaki 90','Loader'],['Atlas Copco 580','Delici'],['Junjin 800E','Delici'],
 ...[1,2,3,4,5,6,7,8,9,10].map(i=>['Kamyon '+i,'Kamyon'])].map((m,i)=>({id:'m'+(i+1),name:m[0],grp:m[1]})),
 costs:['Personel (Maaş + SGK)','Akaryakıt (Mazot)','Elektrik','Patlayıcı Madde','Orman İşletme İzin Bedelleri','Devlet Hakkı, MTA ve Belediye Payı','Ruhsat Harcı','Danışmanlık ve ÇED','Yemekhane ve Sosyal','Atölye, Bakım ve Onarım','Genel İdare ve Diğer'].map((n,i)=>({id:'c'+(i+1),name:n}))};
-function load(){try{const d=JSON.parse(localStorage.getItem('ut_data'));if(d&&d.set){if(!d.set.mach)d.set.mach=JSON.parse(JSON.stringify(DEF.mach));if(!d.set.vardiya)d.set.vardiya=11;return d}}catch(e){}return{set:JSON.parse(JSON.stringify(DEF)),days:{},months:{}}}
+function load(){try{const d=JSON.parse(localStorage.getItem('ut_data'));if(d&&d.set){if(!d.set.mach)d.set.mach=JSON.parse(JSON.stringify(DEF.mach));if(!d.set.vardiya)d.set.vardiya=11;if(!d.set.pers)d.set.pers=[];if(!d.mesai)d.mesai={};if(!d.tatil)d.tatil={};return d}}catch(e){}const n={set:JSON.parse(JSON.stringify(DEF)),days:{},months:{},mesai:{},tatil:{}};n.set.pers=[];return n}
 let D=load();
 const save=()=>{try{localStorage.setItem('ut_data',JSON.stringify(D))}catch(e){}};
 const nf=(v,d=0)=>(+v||0).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -61,6 +61,9 @@ const today=()=>{const t=new Date();return t.getFullYear()+'-'+p2(t.getMonth()+1
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const GRP=['Ekskavatör (yükleme)','Ekskavatör (kırıcılı)','Ekskavatör','Loader','Delici','Kamyon','Diğer'];
 const DUR={c:'Çalışıyor',a:'Arızalı',b:'Bakımda',y:'Yedekte'};
+function ask(msg,ok='Evet'){return new Promise(res=>{const w=document.createElement('div');w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;display:flex;align-items:center;justify-content:center;padding:20px';
+w.innerHTML=`<div style="background:#fff;border-radius:12px;padding:18px;max-width:360px;width:100%"><p style="margin:0 0 14px;font-size:16px">${msg}</p><div style="text-align:right"><button class="b g" id="ask_n">Vazgeç</button>${ok?`<button class="b r" id="ask_y">${ok}</button>`:''}</div></div>`;
+document.body.appendChild(w);const end=v=>{w.remove();res(v)};w.querySelector('#ask_n').onclick=()=>end(false);if(ok)w.querySelector('#ask_y').onclick=()=>end(true)})}
 const AY=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const ayAd=ym=>AY[+ym.slice(5)-1]+' '+ym.slice(0,4);
 const dim=ym=>new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();
@@ -83,7 +86,7 @@ const mx=Math.max(...vals,1),pl=46,pb=22,pt=8,bw=(W-pl-6)/vals.length;
 c.strokeStyle='#e5e7eb';c.fillStyle='#6b7280';for(let k=0;k<=4;k++){const y=H-pb-k*(H-pb-pt)/4;c.beginPath();c.moveTo(pl,y);c.lineTo(W,y);c.stroke();c.fillText(nf(mx*k/4),2,y+4)}
 const st=Math.ceil(labels.length/12);vals.forEach((v,i)=>{const h=v/mx*(H-pb-pt);c.fillStyle=color;c.fillRect(pl+i*bw+1,H-pb-h,Math.max(bw-2,1),h);if(i%st===0){c.fillStyle='#6b7280';c.fillText(labels[i],pl+i*bw+1,H-6)}})}
 
-const TABS=[['gun','Günlük'],['ay','Ay Özeti'],['mak','Makine'],['mal','Maliyet'],['kar','Karşılaştır'],['ayar','Ayarlar']];
+const TABS=[['gun','Günlük'],['ay','Ay Özeti'],['mak','Makine'],['mes','Mesai'],['mal','Maliyet'],['kar','Karşılaştır'],['ayar','Ayarlar']];
 const V={};
 function go(t){$('#nav').innerHTML=TABS.map(x=>`<button class="${x[0]===t?'on':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('');V[t]();window.scrollTo(0,0)}
 const monthSel=fn=>`<div class="card noprint"><div class="row"><label style="margin:0">Ay<input type="month" id="msel" value="${curMonth}" onchange="curMonth=this.value||curMonth;go('${fn}')"></label><div style="align-self:end"><button class="b g" onclick="window.print()">Yazdır / PDF</button></div></div></div>`;
@@ -118,13 +121,13 @@ const p=D.set.prods.find(x=>x.name.trim().toLowerCase()===k);if(p&&v!==''&&!isNa
 $('#g_save').onclick=()=>{const out={},mk={},mkn={};app.querySelectorAll('[data-p]').forEach(i=>{if(i.value!=='')out[i.dataset.p]=+i.value});
 app.querySelectorAll('[data-mk]').forEach(i=>{mk[i.dataset.mk]=i.value;const n=app.querySelector('[data-mn="'+i.dataset.mk+'"]').value;if(i.value!=='c'&&n)mkn[i.dataset.mk]=n});
 D.days[curDay]={sefer:+$('#g_s').value||0,out,note:$('#g_n').value,durus:+$('#g_du').value||0,durusN:$('#g_dn').value,mk,mkn};save();curMonth=curDay.slice(0,7);go('gun');$('#g_ok').textContent=' Kaydedildi ✓'};
-if($('#g_del'))$('#g_del').onclick=()=>{if(confirm(curDay+' kaydı silinsin mi?')){delete D.days[curDay];save();go('gun')}}};
+if($('#g_del'))$('#g_del').onclick=async()=>{if(await ask(curDay.split('-').reverse().join('.')+' kaydı silinsin mi?','Sil')){delete D.days[curDay];save();go('gun')}}};
 
 // ---------- GÜNLÜK RAPOR ----------
 function rapData(){const d=D.days[curDay],g=(d.sefer||0)*D.set.ton,o=d.out||{},c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),mk=d.mk||{},s=mstat(curDay.slice(0,7));
 const by=st=>D.set.mach.filter(m=>mk[m.id]===st);return{d,g,o,c,byp:c?g-c:null,mk,s,by,tar:curDay.slice(8)+'.'+curDay.slice(5,7)+'.'+curDay.slice(0,4)}}
 V.rap=()=>{const r=rapData(),d=r.d,nm=m=>esc(m.name)+((d.mkn||{})[m.id]?' ('+esc(d.mkn[m.id])+')':'');
-app.innerHTML=`<div class="card noprint"><button class="b" id="r_pdf">📄 PDF paylaş (günlük + ay + makine)</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
+app.innerHTML=`<div class="card noprint"><button class="b" id="r_pdf">📄 PDF paylaş</button><button class="b" id="r_pdi">⬇ PDF indir</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
 <p class="mut">PDF paylaş: rapor PDF olarak hazırlanır, paylaş menüsünden WhatsApp'ı seçersin.</p></div>
 <div class="card"><h3 style="font-size:19px">Günlük Üretim Raporu – ${r.tar}</h3>
 <table><tr><th>Üretim</th><th></th></tr><tr><td>Sefer</td><td>${nf(d.sefer)}</td></tr><tr><td>Giren (sefer × ${D.set.ton} t)</td><td>${nf(r.g)} t</td></tr>
@@ -136,7 +139,7 @@ ${D.set.prods.map(p=>`<tr><td>Kantar ${esc(p.name)}</td><td>${r.o[p.id]?nf(r.o[p
 <h3 style="margin-top:14px">${ayAd(curDay.slice(0,7))} – ay toplamı</h3>
 <table><tr><td>Çalışılan gün</td><td>${r.s.gun}</td></tr><tr><td>Sefer</td><td>${nf(r.s.sefer)}</td></tr><tr><td>Giren</td><td>${nf(r.s.giren)} t</td></tr><tr><td>Net (bypassız)</td><td>${nf(r.s.net)} t</td></tr><tr><td>Günlük ortalama giren</td><td>${nf(r.s.gun?r.s.giren/r.s.gun:0)} t</td></tr></table>
 ${d.note?`<p><b>Not:</b> ${esc(d.note)}</p>`:''}</div>`;
-$('#r_pdf').onclick=()=>pdfPaylas(r);
+$('#r_pdf').onclick=()=>pdfPaylas(r);$('#r_pdi').onclick=()=>pdfIndir(cvPdf(raporCanvas(r),'Uretim_Raporu_'+curDay+'.pdf'));
 $('#r_sh').onclick=()=>{const t=['*Günlük Üretim Raporu – '+r.tar+'*','Sefer: '+nf(d.sefer)+' → Giren: '+nf(r.g)+' t',...D.set.prods.filter(p=>r.o[p.id]).map(p=>p.name+': '+nf(r.o[p.id],2)+' t'),'Üretim toplam: '+nf(r.c,2)+' t',r.byp==null?'':'Bypass: '+nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',
 d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:''].filter(Boolean).join('\n');
 if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
@@ -182,7 +185,7 @@ F(fs,1);c.fillStyle='#1d2430';c.fillRect(L,y-rh+8,R-L,2);y+=4;['Toplam',nf(s.sef
 if(d.note){F(20);T('Not: '+fit(d.note,R-L-60),L,H-75)}
 F(18);T('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-40,0,'#6b7280');return cv}
 function jpgPdf(jpg,w,h){const enc=new TextEncoder(),parts=[],off=[];let len=0;const add=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
-const PW=595.28,PH=841.89;add('%PDF-1.4\n');
+const PW=w>h?841.89:595.28,PH=w>h?595.28:841.89;add('%PDF-1.4\n');
 const obj=(n,body,stream)=>{off[n]=len;add(n+' 0 obj\n'+body);if(stream){add('stream\n');add(stream);add('\nendstream')}add('\nendobj\n')};
 obj(1,'<< /Type /Catalog /Pages 2 0 R >>');obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
 obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
@@ -190,10 +193,10 @@ obj(4,'<< /Type /XObject /Subtype /Image /Width '+w+' /Height '+h+' /ColorSpace 
 const cs='q '+PW+' 0 0 '+PH+' 0 0 cm /Im0 Do Q';obj(5,'<< /Length '+cs.length+' >>\n',enc.encode(cs));
 const xo=len;let x='xref\n0 6\n0000000000 65535 f \n';for(let i=1;i<=5;i++)x+=String(off[i]).padStart(10,'0')+' 00000 n \n';
 add(x+'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xo+'\n%%EOF');return new Blob(parts,{type:'application/pdf'})}
-async function pdfPaylas(r){const cv=raporCanvas(r),u=cv.toDataURL('image/jpeg',0.9),b=atob(u.split(',')[1]),j=new Uint8Array(b.length);for(let i=0;i<b.length;i++)j[i]=b.charCodeAt(i);
-const name='Uretim_Raporu_'+curDay+'.pdf',f=new File([jpgPdf(j,cv.width,cv.height)],name,{type:'application/pdf'});
-if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:'Günlük Üretim Raporu '+r.tar})}catch(e){}}
-else{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=name;a.click()}}
+function cvPdf(cv,name){const u=cv.toDataURL('image/jpeg',0.9),b=atob(u.split(',')[1]),j=new Uint8Array(b.length);for(let i=0;i<b.length;i++)j[i]=b.charCodeAt(i);return new File([jpgPdf(j,cv.width,cv.height)],name,{type:'application/pdf'})}
+function pdfIndir(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(a.href)},2000)}
+async function pdfGonder(f,title){if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title})}catch(e){}}else pdfIndir(f)}
+const pdfPaylas=r=>pdfGonder(cvPdf(raporCanvas(r),'Uretim_Raporu_'+curDay+'.pdf'),'Günlük Üretim Raporu '+r.tar);
 
 // ---------- AY ÖZETİ ----------
 V.ay=()=>{const s=mstat(curMonth),n=dim(curMonth),lab=[],vals=[];
@@ -222,6 +225,59 @@ app.innerHTML=monthSel('mak')+`<h3>${ayAd(curMonth)} – Makine ve Duruş</h3>
 <div class="card"><h3>Emre amadelik (${ds.length} kayıtlı gün)</h3><div class="scroll"><table><tr><th>Makine</th><th>Çalışan</th><th>Arızalı</th><th>Bakım</th><th>Yedek</th><th>Emre amade</th></tr>
 ${rows.map(r=>`<tr><td>${esc(r.m.name)}${r.notes.length?`<div class="mut">${esc(r.notes.join(' · '))}</div>`:''}</td><td>${r.c.c}</td><td style="${r.c.a?'color:#c62828;font-weight:700':''}">${r.c.a}</td><td>${r.c.b}</td><td>${r.c.y}</td><td>${r.av==null?'–':'%'+nf(r.av)}</td></tr>`).join('')}</table></div><p class="mut">Emre amade = (çalışan + yedekte) gün / kayıtlı gün.</p></div>
 <div class="card"><h3>Tesis duruşları</h3><table><tr><th>Gün</th><th>Saat</th><th>Sebep</th></tr>${dur.map(k=>`<tr><td>${k.slice(8)}.${k.slice(5,7)}</td><td>${nf(D.days[k].durus,1)}</td><td>${esc(D.days[k].durusN)}</td></tr>`).join('')||'<tr><td colspan="3">Duruş kaydı yok</td></tr>'}</table></div>`};
+
+// ---------- MESAİ ----------
+let curMDay=today();
+const isPaz=k=>new Date(k+'T12:00').getDay()===0,GUNK=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+const isTatil=k=>isPaz(k)||!!D.tatil[k];
+function mesStat(ym,upto){const P=D.set.pers,ds=Object.keys(D.mesai).filter(k=>k.startsWith(ym)&&k<=upto).sort(),t={};
+P.forEach(p=>t[p.id]={n:0,t:0,g:0});ds.forEach(k=>{const m=D.mesai[k],tt=isTatil(k);P.forEach(p=>{const v=m[p.id];if(v==null)return;if(tt)t[p.id].t+=v;else t[p.id].n+=v;if(v>0)t[p.id].g++})});
+let N=0,TT=0;P.forEach(p=>{N+=t[p.id].n;TT+=t[p.id].t});return{ds,t,N,TT}}
+V.mes=()=>{const P=D.set.pers,k=curMDay,m=D.mesai[k]||{},pk=Object.keys(D.mesai).filter(x=>x<k).sort().pop(),ym=k.slice(0,7),st=mesStat(ym,k);
+if(!P.length){app.innerHTML=`<div class="card"><h3>Mesai</h3><p>Personel listesi boş. Ayarlar → <b>Yedek yükle</b> ile mesai dosyasını yükle ya da Ayarlar → Personel'den kişi ekle.</p><button class="b" onclick="go('ayar')">Ayarlara git</button></div>`;return}
+app.innerHTML=`<div class="card"><h3>Günlük mesai girişi</h3>
+<div class="row"><label>Tarih<input type="date" id="ms_d" value="${k}"></label><label style="align-self:end">${isPaz(k)?'<b style="color:#c2410c">Pazar – tatil mesaisi</b>':`<span style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="ms_t" style="width:auto" ${D.tatil[k]?'checked':''}> Resmi tatil</span>`}</label></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"><input type="number" inputmode="decimal" step="any" id="ms_all" placeholder="Saat" style="width:80px"><button class="b g s" id="ms_ap">Hepsine yaz</button>${pk?`<button class="b g s" id="ms_cp">${pk.slice(8)}.${pk.slice(5,7)} gününü kopyala</button>`:''}</div>
+<div class="mut">Boş bırakılan kişi o gün kayıtsız sayılır (işe başlamamış, izinli vb.).</div>
+${P.map((p,i)=>`<div style="display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef0f3;padding:5px 0"><span style="width:22px;color:#6b7280;font-size:13px">${i+1}</span><span style="flex:1;min-width:0"><b style="font-size:14px">${esc(p.name)}</b><div class="mut" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.gorev||'')}</div></span><input type="number" inputmode="decimal" step="any" data-ms="${p.id}" value="${m[p.id]??''}" style="width:70px;text-align:center"></div>`).join('')}
+<div class="mut" id="ms_sum" style="margin-top:8px"></div>
+<button class="b" id="ms_save">Kaydet</button>${D.mesai[k]?'<button class="b r" id="ms_del">Günü sil</button>':''}<span id="ms_ok" class="mut"></span></div>
+<div class="card"><h3>${ayAd(ym)} – 1'inden ${k.slice(8)}.${k.slice(5,7)}'e kadar (${st.ds.length} gün kayıtlı)</h3>
+<div class="scroll"><table><tr><th>#</th><th>Adı Soyadı</th><th>Hafta içi+Cmt</th><th>Pazar/Tatil</th><th>Toplam</th></tr>
+${P.map((p,i)=>{const x=st.t[p.id];return `<tr><td>${i+1}</td><td>${esc(p.name)}</td><td>${nf(x.n,1)}</td><td>${nf(x.t,1)}</td><td><b>${nf(x.n+x.t,1)}</b></td></tr>`}).join('')}
+<tr class="tot"><td></td><td>TOPLAM</td><td>${nf(st.N,1)}</td><td>${nf(st.TT,1)}</td><td>${nf(st.N+st.TT,1)}</td></tr></table></div>
+<button class="b" id="ms_pdf">📄 PDF paylaş</button><button class="b" id="ms_pdi">⬇ PDF indir</button><button class="b g" id="ms_csv">Excel'e aktar</button>
+<p class="mut">PDF, ayın 1'inden seçili güne kadar gün gün mesai çizelgesidir (Excel formunla aynı düzen).</p></div>`;
+const upd=()=>{let t=0,n=0;app.querySelectorAll('[data-ms]').forEach(i=>{if(i.value!==''){t+=+i.value;n++}});$('#ms_sum').textContent=n+' kişi girildi, günlük toplam '+nf(t,1)+' saat'};upd();
+app.querySelectorAll('[data-ms]').forEach(i=>i.addEventListener('input',upd));
+$('#ms_d').onchange=e=>{curMDay=e.target.value||curMDay;go('mes')};
+$('#ms_ap').onclick=()=>{const v=$('#ms_all').value;if(v==='')return;app.querySelectorAll('[data-ms]').forEach(i=>i.value=v);upd()};
+if($('#ms_cp'))$('#ms_cp').onclick=()=>{const o=D.mesai[pk];app.querySelectorAll('[data-ms]').forEach(i=>i.value=o[i.dataset.ms]??'');upd()};
+$('#ms_save').onclick=()=>{const o={};app.querySelectorAll('[data-ms]').forEach(i=>{if(i.value!=='')o[i.dataset.ms]=+i.value});D.mesai[k]=o;if($('#ms_t')){if($('#ms_t').checked)D.tatil[k]=1;else delete D.tatil[k]}save();go('mes');$('#ms_ok').textContent=' Kaydedildi ✓'};
+if($('#ms_del'))$('#ms_del').onclick=async()=>{if(await ask(k.split('-').reverse().join('.')+' mesai kaydı silinsin mi?','Sil')){delete D.mesai[k];save();go('mes')}};
+const fn='Mesai_'+ym+'_'+k.slice(8)+'.pdf';
+$('#ms_pdf').onclick=()=>pdfGonder(cvPdf(mesaiCanvas(k),fn),'Mesai Çizelgesi '+ayAd(ym));$('#ms_pdi').onclick=()=>pdfIndir(cvPdf(mesaiCanvas(k),fn));
+$('#ms_csv').onclick=()=>{const n=+k.slice(8),days=[...Array(n)].map((_,i)=>ym+'-'+p2(i+1)),st2=mesStat(ym,k);
+const rows=[['Sıra','Adı Soyadı','Görevi',...days.map(d=>d.slice(8)+' '+GUNK[new Date(d+'T12:00').getDay()]+(isTatil(d)?' (T)':'')),'Hafta İçi+Cmt','Pazar/Tatil','Toplam']];
+D.set.pers.forEach((p,i)=>{const x=st2.t[p.id];rows.push([i+1,p.name,(p.gorev||'').replace(/;/g,','),...days.map(d=>{const v=(D.mesai[d]||{})[p.id];return v==null?'':String(v).replace('.',',')}),x.n,x.t,x.n+x.t].map(String))});
+dl('﻿'+rows.map(r=>r.join(';')).join('\r\n'),'Mesai_'+ym+'.csv','text/csv')}};
+function mesaiCanvas(k){const ym=k.slice(0,7),n=+k.slice(8),P=D.set.pers,st=mesStat(ym,k),W=1754,H=1240,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
+c.fillStyle='#fff';c.fillRect(0,0,W,H);const F=(z,b)=>c.font=(b?'bold ':'')+z+'px Arial, sans-serif';const T=(t,x,y,al,col)=>{c.textAlign=al||'left';c.fillStyle=col||'#1d2430';c.fillText(t,x,y);c.textAlign='left'};
+c.fillStyle='#1d2430';c.fillRect(0,0,W,58);F(26,1);T('AYTAŞ MADENCİLİK – GÜNLÜK MESAİ ÇİZELGESİ',40,38,0,'#fff');T(ayAd(ym)+'  (1 – '+n+')',W-40,38,'right','#fff');
+const L=40,nameW=250,sumW=78,dw=Math.min(40,(W-2*L-34-nameW-3*sumW)/n),xs=L+34+nameW,top=80,rh=Math.min(34,(H-top-70)/(P.length+3)),fz=Math.max(11,Math.min(16,rh-12));
+for(let d=1;d<=n;d++){const kk=ym+'-'+p2(d);if(isTatil(kk)){c.fillStyle='#fde7d4';c.fillRect(xs+(d-1)*dw,top,dw,rh*(P.length+3))}}
+F(fz,1);let y=top+rh*0.7;T('#',L,y+rh*0.5);T('Adı Soyadı',L+34,y+rh*0.5);
+for(let d=1;d<=n;d++){const kk=ym+'-'+p2(d),x=xs+(d-1)*dw+dw/2;T(String(d),x,y,'center');F(fz-2);T(GUNK[new Date(kk+'T12:00').getDay()],x,y+rh*0.85,'center','#6b7280');F(fz,1)}
+const sx=xs+n*dw;['H.içi+Cmt','Paz/Tatil','Toplam'].forEach((t,i)=>{F(fz-2,1);T(t,sx+sumW*(i+.5),y+rh*0.5,'center')});
+y=top+rh*2;c.fillStyle='#1d2430';c.fillRect(L,y-2,W-2*L,2);
+P.forEach((p,i)=>{const yy=y+rh*(i+1)-rh*0.3;if(i%2){c.fillStyle='rgba(0,0,0,.035)';c.fillRect(L,y+rh*i,W-2*L,rh)}F(fz);T(String(i+1),L,yy,0,'#6b7280');let nm=p.name;while(c.measureText(nm).width>nameW-8)nm=nm.slice(0,-1);T(nm,L+34,yy);
+for(let d=1;d<=n;d++){const v=(D.mesai[ym+'-'+p2(d)]||{})[p.id];if(v==null)continue;T(v?nf(v,v%1?1:0):'0',xs+(d-1)*dw+dw/2,yy,'center',v?'#1d2430':'#b0b6bf')}
+const x=st.t[p.id];F(fz,1);[x.n,x.t,x.n+x.t].forEach((v,j)=>T(nf(v,v%1?1:0),sx+sumW*(j+.5),yy,'center'))});
+y+=rh*P.length;c.fillStyle='#1d2430';c.fillRect(L,y,W-2*L,2);const yy=y+rh*0.7;F(fz,1);T('GÜNLÜK TOPLAM',L+34,yy);
+for(let d=1;d<=n;d++){const m=D.mesai[ym+'-'+p2(d)];if(!m)continue;let t=0;P.forEach(p=>t+=m[p.id]||0);T(nf(t),xs+(d-1)*dw+dw/2,yy,'center')}
+[st.N,st.TT,st.N+st.TT].forEach((v,j)=>T(nf(v),sx+sumW*(j+.5),yy,'center'));
+c.strokeStyle='#d1d5db';c.lineWidth=1;for(let d=0;d<=n;d++){c.beginPath();c.moveTo(xs+d*dw,top);c.lineTo(xs+d*dw,y+rh);c.stroke()}for(let j=0;j<=3;j++){c.beginPath();c.moveTo(sx+j*sumW,top);c.lineTo(sx+j*sumW,y+rh);c.stroke()}
+F(16);T('Turuncu sütunlar: Pazar / resmi tatil.   Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-28,0,'#6b7280');return cv}
 
 // ---------- MALİYET ----------
 V.mal=()=>{const m=D.months[curMonth]||(D.months[curMonth]={}),cs=m.costs||(m.costs={}),s=mstat(curMonth);
@@ -256,22 +312,23 @@ V.ayar=()=>{const list=(arr,k)=>arr.map((x,i)=>`<div style="display:flex;gap:6px
 app.innerHTML=`<div class="card"><h3>Genel</h3><div class="row"><label>Sefer başına ton<input type="number" step="any" id="a_t" value="${D.set.ton}"></label><label>Vardiya (saat/gün)<input type="number" step="any" id="a_v" value="${D.set.vardiya||11}"></label></div></div>
 <div class="card"><h3>Kantar ürünleri</h3>${list(D.set.prods,'p')}<button class="b g s" onclick="addItem('p')">+ Ürün ekle</button><p class="mut">Bypass = giren (sefer × ton) − kantar üretim toplamı.</p></div>
 <div class="card"><h3>Makineler</h3>${list(D.set.mach,'m')}<button class="b g s" onclick="addItem('m')">+ Makine ekle</button></div>
+<div class="card"><h3>Personel (mesai)</h3>${D.set.pers.map((x,i)=>`<div style="display:flex;gap:6px;margin:5px 0;align-items:center;flex-wrap:wrap"><input data-k="${i}" value="${esc(x.name)}" placeholder="Adı Soyadı" style="flex:1;min-width:140px"><input data-kg="${i}" value="${esc(x.gorev||'')}" placeholder="Görevi" style="flex:1;min-width:140px"><button class="b g s" onclick="moveItem('k',${i},-1)" ${i?'':'disabled'}>▲</button><button class="b g s" onclick="moveItem('k',${i},1)" ${i<D.set.pers.length-1?'':'disabled'}>▼</button><button class="b r s" onclick="delItem('k',${i})">✕</button></div>`).join('')}<button class="b g s" onclick="addItem('k')">+ Personel ekle</button><p class="mut">Silinen kişinin geçmiş mesaisi raporlarda görünmez olur; işten ayrılan kişiyi ay bitene kadar silme.</p></div>
 <div class="card"><h3>Gider kalemleri</h3>${list(D.set.costs,'c')}<button class="b g s" onclick="addItem('c')">+ Kalem ekle</button></div>
 <div class="card"><button class="b" id="a_save">Ayarları kaydet</button></div>
 <div class="card"><h3>Veri</h3><button class="b g" id="a_exp">Yedek indir</button><label class="b g" style="display:inline-block;color:#fff">Yedek yükle<input type="file" id="a_imp" accept=".json" style="display:none"></label><button class="b g" id="a_csv">Excel'e aktar (CSV)</button>
 <p class="mut">Veriler sadece bu cihazda durur. Telefon ↔ bilgisayar arası taşımak için yedek indir / yükle kullan.</p></div>`;
 $('#a_save').onclick=()=>{readSet();save();go('ayar')};
 $('#a_exp').onclick=()=>dl(JSON.stringify(D,null,1),'uretim_yedek_'+today()+'.json','application/json');
-$('#a_imp').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.set||!x.days)throw 0;
-if(confirm('Yedekteki kayıtlar mevcut verinin üstüne eklensin mi? (Aynı gün/ay varsa yedekteki geçerli olur)')){Object.assign(D.days,x.days);Object.assign(D.months,x.months||{});save();go('kar')}}catch(err){alert('Dosya okunamadı')}};r.readAsText(f)};
+$('#a_imp').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const x=JSON.parse(r.result);if(!x.set||(!x.days&&!x.mesai))throw 0;
+if(await ask('Yedekteki kayıtlar mevcut verinin üstüne eklensin mi? Aynı gün/ay varsa yedekteki geçerli olur.','Ekle')){Object.assign(D.days,x.days||{});Object.assign(D.months,x.months||{});Object.assign(D.mesai,x.mesai||{});Object.assign(D.tatil,x.tatil||{});(x.set.pers||[]).forEach(p=>{const e=D.set.pers.find(q=>q.id===p.id);if(e)Object.assign(e,p);else D.set.pers.push(p)});save();go(x.mesai?'mes':'kar')}}catch(err){ask('Dosya okunamadı.',null)}};r.readAsText(f)};
 $('#a_csv').onclick=()=>{const P=D.set.prods,rows=[['Tarih','Sefer','Giren (ton)',...P.map(p=>p.name),'Duruş (saat)','Duruş sebebi','Arızalı makineler','Not']];
 Object.keys(D.days).sort().forEach(k=>{const x=D.days[k];rows.push([k,x.sefer||0,(x.sefer||0)*D.set.ton,...P.map(p=>String((x.out||{})[p.id]||0).replace('.',',')),String(x.durus||0).replace('.',','),(x.durusN||'').replace(/;/g,','),D.set.mach.filter(m=>(x.mk||{})[m.id]==='a').map(m=>m.name).join(', '),(x.note||'').replace(/;/g,',')])});
 dl('﻿'+rows.map(r=>r.join(';')).join('\r\n'),'uretim_'+today()+'.csv','text/csv')}};
-function readSet(){D.set.ton=+$('#a_t').value||36;D.set.vardiya=+$('#a_v').value||11;app.querySelectorAll('[data-p]').forEach(i=>D.set.prods[+i.dataset.p].name=i.value);app.querySelectorAll('[data-m]').forEach(i=>D.set.mach[+i.dataset.m].name=i.value);app.querySelectorAll('[data-mg]').forEach(i=>D.set.mach[+i.dataset.mg].grp=i.value);app.querySelectorAll('[data-c]').forEach(i=>D.set.costs[+i.dataset.c].name=i.value)}
-const ARR={p:'prods',c:'costs',m:'mach'};
+function readSet(){D.set.ton=+$('#a_t').value||36;D.set.vardiya=+$('#a_v').value||11;app.querySelectorAll('[data-p]').forEach(i=>D.set.prods[+i.dataset.p].name=i.value);app.querySelectorAll('[data-m]').forEach(i=>D.set.mach[+i.dataset.m].name=i.value);app.querySelectorAll('[data-mg]').forEach(i=>D.set.mach[+i.dataset.mg].grp=i.value);app.querySelectorAll('[data-c]').forEach(i=>D.set.costs[+i.dataset.c].name=i.value);app.querySelectorAll('[data-k]').forEach(i=>D.set.pers[+i.dataset.k].name=i.value);app.querySelectorAll('[data-kg]').forEach(i=>D.set.pers[+i.dataset.kg].gorev=i.value)}
+const ARR={p:'prods',c:'costs',m:'mach',k:'pers'};
 function addItem(k){readSet();const it={id:k+Date.now().toString(36),name:''};if(k==='m')it.grp='Diğer';D.set[ARR[k]].push(it);save();go('ayar')}
 function moveItem(k,i,d){readSet();const a=D.set[ARR[k]],j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];save();const y=window.scrollY;go('ayar');window.scrollTo(0,y)}
-function delItem(k,i){if(!confirm('Silinsin mi? (Eski kayıtlardaki değerleri raporlarda görünmez olur)'))return;readSet();D.set[ARR[k]].splice(i,1);save();go('ayar')}
+async function delItem(k,i){readSet();const nm=D.set[ARR[k]][i].name||'Bu satır';if(!await ask('<b>'+esc(nm)+'</b> silinsin mi? Eski kayıtlardaki değerleri raporlarda görünmez olur.','Sil'))return;readSet();D.set[ARR[k]].splice(i,1);save();go('ayar')}
 function dl(txt,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
 
 go('gun');
