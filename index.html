@@ -124,7 +124,7 @@ if($('#g_del'))$('#g_del').onclick=()=>{if(confirm(curDay+' kaydı silinsin mi?'
 function rapData(){const d=D.days[curDay],g=(d.sefer||0)*D.set.ton,o=d.out||{},c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),mk=d.mk||{},s=mstat(curDay.slice(0,7));
 const by=st=>D.set.mach.filter(m=>mk[m.id]===st);return{d,g,o,c,byp:c?g-c:null,mk,s,by,tar:curDay.slice(8)+'.'+curDay.slice(5,7)+'.'+curDay.slice(0,4)}}
 V.rap=()=>{const r=rapData(),d=r.d,nm=m=>esc(m.name)+((d.mkn||{})[m.id]?' ('+esc(d.mkn[m.id])+')':'');
-app.innerHTML=`<div class="card noprint"><button class="b" id="r_pdf">📄 PDF paylaş</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
+app.innerHTML=`<div class="card noprint"><button class="b" id="r_pdf">📄 PDF paylaş (günlük + ay + makine)</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
 <p class="mut">PDF paylaş: rapor PDF olarak hazırlanır, paylaş menüsünden WhatsApp'ı seçersin.</p></div>
 <div class="card"><h3 style="font-size:19px">Günlük Üretim Raporu – ${r.tar}</h3>
 <table><tr><th>Üretim</th><th></th></tr><tr><td>Sefer</td><td>${nf(d.sefer)}</td></tr><tr><td>Giren (sefer × ${D.set.ton} t)</td><td>${nf(r.g)} t</td></tr>
@@ -142,25 +142,45 @@ d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'',
 if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
 
 // ---------- PDF ----------
-function raporCanvas(r){const d=r.d,W=1240,H=1754,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
-c.fillStyle='#fff';c.fillRect(0,0,W,H);let y=110;const L=90,R=W-90;
+function raporCanvas(r){const d=r.d,s=r.s,ym=curDay.slice(0,7),W=1240,H=1754,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
+c.fillStyle='#fff';c.fillRect(0,0,W,H);const L=70,R=W-70,MID=W/2;let y;
 const F=(sz,b)=>c.font=(b?'bold ':'')+sz+'px Arial, sans-serif';
-c.fillStyle='#1d2430';c.fillRect(0,0,W,70);F(30,1);c.fillStyle='#fff';c.fillText('AYTAŞ – Günlük Üretim Raporu',L,46);c.textAlign='right';c.fillText(r.tar,R,46);c.textAlign='left';
-const head=t=>{y+=30;F(30,1);c.fillStyle='#c2410c';c.fillText(t,L,y);y+=14;c.fillRect(L,y,R-L,3);y+=46};
-const row=(k,v,bold)=>{F(26,bold);c.fillStyle='#1d2430';c.fillText(k,L,y);c.textAlign='right';
-let t=String(v);while(c.measureText(t).width>R-L-380&&t.length>5)t=t.slice(0,-2);if(t!==String(v))t+='…';c.fillText(t,R,y);c.textAlign='left';
-c.fillStyle='#e5e7eb';c.fillRect(L,y+14,R-L,1);y+=48};
-head('Üretim');row('Sefer',nf(d.sefer));row('Giren (sefer × '+D.set.ton+' t)',nf(r.g)+' t');
-D.set.prods.forEach(p=>row('Kantar '+p.name,r.o[p.id]?nf(r.o[p.id],2)+' t':'–'));
-row('Kantar üretim toplam',nf(r.c,2)+' t',1);row('Bypass',r.byp==null?'–':nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',1);
-row('Tesis duruşu',d.durus?nf(d.durus,1)+' saat'+(d.durusN?' – '+d.durusN:''):'Yok');
-head('Makine durumu');row('Çalışan',r.by('c').length+' / '+D.set.mach.length);
-const nm=m=>m.name+((d.mkn||{})[m.id]?' ('+d.mkn[m.id]+')':'');
-[['Arızalı','a'],['Bakımda','b'],['Yedekte','y']].forEach(([k,st])=>{const l=r.by(st);if(!l.length){row(k,'Yok');return}
-F(26,1);c.fillStyle='#1d2430';c.fillText(k,L,y);F(26);let x=L+200;l.map(nm).forEach((t,i)=>{t+=(i<l.length-1?',  ':'');const w=c.measureText(t).width;if(x+w>R){x=L+200;y+=38}c.fillText(t,x,y);x+=w});c.fillStyle='#e5e7eb';c.fillRect(L,y+14,R-L,1);y+=48});
-head(ayAd(curDay.slice(0,7))+' – ay toplamı');row('Çalışılan gün',r.s.gun);row('Sefer',nf(r.s.sefer));row('Giren',nf(r.s.giren)+' t');row('Bypass',nf(r.s.byp)+' t');row('Net (bypassız)',nf(r.s.net)+' t',1);row('Günlük ortalama giren',nf(r.s.gun?r.s.giren/r.s.gun:0)+' t');
-if(d.note){y+=10;F(26,1);c.fillStyle='#1d2430';c.fillText('Not:',L,y);F(26);c.fillText(d.note.slice(0,80),L+80,y)}
-F(20);c.fillStyle='#6b7280';c.fillText('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-50);return cv}
+const T=(t,x,yy,al,col)=>{c.textAlign=al||'left';c.fillStyle=col||'#1d2430';c.fillText(t,x,yy);c.textAlign='left'};
+const fit=(t,w)=>{t=String(t);if(c.measureText(t).width<=w)return t;while(t.length>3&&c.measureText(t+'…').width>w)t=t.slice(0,-1);return t+'…'};
+const head=(t,x,x2,yy)=>{F(26,1);T(t,x,yy,0,'#c2410c');c.fillStyle='#c2410c';c.fillRect(x,yy+10,x2-x,3);return yy+42};
+const kv=(x,x2,yy,k,v,b)=>{F(22,b);T(k,x,yy);T(fit(v,(x2-x)*0.55),x2,yy,'right');c.fillStyle='#e5e7eb';c.fillRect(x,yy+10,x2-x,1);return yy+34};
+c.fillStyle='#1d2430';c.fillRect(0,0,W,64);F(28,1);T('AYTAŞ – Üretim Raporu',L,42,0,'#fff');T(r.tar,R,42,'right','#fff');
+// Günlük (sol) + Ay toplamı (sağ)
+let yl=head('Günlük – '+r.tar,L,MID-25,110),yr=head(ayAd(ym)+' toplamı',MID+25,R,110);
+yl=kv(L,MID-25,yl,'Sefer',nf(d.sefer));yl=kv(L,MID-25,yl,'Giren (× '+D.set.ton+' t)',nf(r.g)+' t');
+D.set.prods.forEach(p=>yl=kv(L,MID-25,yl,'Kantar '+p.name,r.o[p.id]?nf(r.o[p.id],2)+' t':'–'));
+yl=kv(L,MID-25,yl,'Üretim toplam',nf(r.c,2)+' t',1);yl=kv(L,MID-25,yl,'Bypass',r.byp==null?'–':nf(r.byp,1)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',1);
+yl=kv(L,MID-25,yl,'Tesis duruşu',d.durus?nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'Yok');
+const V2=D.set.vardiya||11,calS=s.gun*V2-s.durus;
+yr=kv(MID+25,R,yr,'Çalışılan gün',s.gun);yr=kv(MID+25,R,yr,'Sefer',nf(s.sefer));yr=kv(MID+25,R,yr,'Giren',nf(s.giren)+' t');
+yr=kv(MID+25,R,yr,'Kantar üretim',nf(s.cik)+' t');yr=kv(MID+25,R,yr,'Bypass',nf(s.byp)+' t (%'+nf(s.giren?s.byp/s.giren*100:0,1)+')');
+yr=kv(MID+25,R,yr,'Net (bypassız)',nf(s.net)+' t',1);yr=kv(MID+25,R,yr,'Günlük ort. giren',nf(s.gun?s.giren/s.gun:0)+' t');
+yr=kv(MID+25,R,yr,'Tesis duruşu',nf(s.durus,1)+' sa');yr=kv(MID+25,R,yr,'Tesis çalışma oranı','%'+nf(s.gun?calS/(s.gun*V2)*100:0,1));
+const top=s.cik||1;D.set.prods.forEach(p=>{if(s.out[p.id])yr=kv(MID+25,R,yr,'  '+p.name,nf(s.out[p.id])+' t (%'+nf(s.out[p.id]/top*100,1)+')')});
+y=Math.max(yl,yr)+20;
+// Makine
+y=head('Makine durumu',L,R,y);const mk=d.mk||{},nm=m=>m.name+((d.mkn||{})[m.id]?' ('+d.mkn[m.id]+')':'');
+const line=(k,arr)=>{F(22,1);T(k,L,y);F(22);let x=L+235;if(!arr.length){T('Yok',x,y);y+=32;return}arr.forEach((t,i)=>{t+=(i<arr.length-1?',  ':'');const w=c.measureText(t).width;if(x+w>R){x=L+235;y+=30}T(t,x,y);x+=w});y+=34};
+F(22,1);T('Bugün çalışan',L,y);F(22);T(r.by("c").length+" / "+D.set.mach.length,L+235,y);y+=34;
+line('Arızalı',r.by('a').map(nm));line('Bakımda',r.by('b').map(nm));
+const ds=s.ds.filter(k=>D.days[k].mk),low=D.set.mach.map(m=>{let cc=0,a=0,t=0;ds.forEach(k=>{const st=D.days[k].mk[m.id];if(st){t++;if(st==='c'||st==='y')cc++;if(st==='a')a++}});return{m,av:t?cc/t*100:100,a}}).filter(x=>x.av<100).sort((p,q)=>p.av-q.av);
+line('Ay emre amadelik',low.length?low.map(x=>x.m.name+' %'+nf(x.av)):['Tüm makineler %100']);
+y+=10;
+// Günler tablosu
+y=head(ayAd(ym)+' – günler',L,R,y);const cols=[['Gün',L,0],['Sefer',L+230,1],['Giren (t)',L+430,1],['Üretim (t)',L+650,1],['Bypass (t)',L+870,1],['Duruş (sa)',R,1]];
+F(20,1);cols.forEach(([t,x,al])=>T(t,x,y,al?'right':'left','#6b7280'));y+=8;c.fillStyle='#1d2430';c.fillRect(L,y,R-L,2);y+=26;
+const rows=s.ds,avail=H-60-y-40,rh=Math.max(16,Math.min(30,avail/Math.max(rows.length+1,1))),fs=Math.max(13,Math.min(20,rh-8));
+rows.forEach(k=>{const x=D.days[k],g=(x.sefer||0)*D.set.ton,cc=D.set.prods.reduce((t,p)=>t+((x.out||{})[p.id]||0),0),bold=k===curDay;F(fs,bold);
+if(bold){c.fillStyle='#fff7ed';c.fillRect(L,y-rh+6,R-L,rh)}
+[k.slice(8)+'.'+k.slice(5,7)+(x.durusN?'  '+fit(x.durusN,140):''),nf(x.sefer),nf(g),cc?nf(cc):'–',cc?nf(g-cc):'–',x.durus?nf(x.durus,1):''].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));y+=rh});
+F(fs,1);c.fillStyle='#1d2430';c.fillRect(L,y-rh+8,R-L,2);y+=4;['Toplam',nf(s.sefer),nf(s.giren),nf(s.cik),nf(s.byp),nf(s.durus,1)].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));
+if(d.note){F(20);T('Not: '+fit(d.note,R-L-60),L,H-75)}
+F(18);T('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-40,0,'#6b7280');return cv}
 function jpgPdf(jpg,w,h){const enc=new TextEncoder(),parts=[],off=[];let len=0;const add=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
 const PW=595.28,PH=841.89;add('%PDF-1.4\n');
 const obj=(n,body,stream)=>{off[n]=len;add(n+' 0 obj\n'+body);if(stream){add('stream\n');add(stream);add('\nendstream')}add('\nendobj\n')};
