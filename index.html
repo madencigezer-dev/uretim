@@ -97,6 +97,12 @@ const today=()=>{const t=new Date();return t.getFullYear()+'-'+p2(t.getMonth()+1
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const GRP=['Ekskavatör (yükleme)','Ekskavatör (kırıcılı)','Ekskavatör','Loader','Delici','Kamyon','Diğer'];
 const DUR={c:'Çalışıyor',a:'Arızalı',b:'Bakımda',y:'Yedekte'};
+const CATS=['Ekskavatör','Loader','Kaya Delici','Damperli Kamyon','Diğer'];
+function cat(m){const g=m.grp||'',n=(m.name||'').toLocaleUpperCase('tr-TR');if(/^Ekskav/.test(g))return'Ekskavatör';if(g==='Loader')return'Loader';if(g==='Delici')return'Kaya Delici';if(g==='Kamyon')return'Damperli Kamyon';
+if(/^\d{2}\s*[A-ZÇĞİÖŞÜ]{1,3}\s*\d{2,5}/.test(n)||/KAMYON|DAMPER/.test(n))return'Damperli Kamyon';if(/LOADER|ZW\s?\d|L\d{3}|WA\s?\d|KAWASAKI|YÜKLEYİCİ/.test(n))return'Loader';if(/DELİCİ|DELICI|ATLAS|JUNJIN|FURUKAWA|SANDVIK|TAMROCK|EPIROC/.test(n))return'Kaya Delici';
+if(/EKSKAV|HITACHI|SUMITOMO|SANY|VOLVO|KOMATSU|CAT|HYUNDAI|LIEBHERR|DOOSAN|KOBELCO|JCB|EC\d|PC\d/.test(n))return'Ekskavatör';return'Diğer'}
+const SO={a:0,b:1,y:2},ncOf=(ms,mk)=>ms.filter(m=>mk[m.id]&&mk[m.id]!=='c').sort((p,q)=>SO[mk[p.id]]-SO[mk[q.id]]),okOf=(ms,mk)=>ms.filter(m=>mk[m.id]==='c').length;
+const byCat=list=>CATS.map(c=>[c,list.filter(m=>cat(m)===c)]).filter(x=>x[1].length);
 function ask(msg,ok='Evet'){return new Promise(res=>{const w=document.createElement('div');w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;display:flex;align-items:center;justify-content:center;padding:20px';
 w.innerHTML=`<div style="background:#fff;border-radius:12px;padding:18px;max-width:360px;width:100%"><p style="margin:0 0 14px;font-size:16px">${msg}</p><div style="text-align:right"><button class="b g" id="ask_n">Vazgeç</button>${ok?`<button class="b r" id="ask_y">${ok}</button>`:''}</div></div>`;
 document.body.appendChild(w);const end=v=>{w.remove();res(v)};w.querySelector('#ask_n').onclick=()=>end(false);if(ok)w.querySelector('#ask_y').onclick=()=>end(true)})}
@@ -137,7 +143,7 @@ const monthSel=fn=>`<div class="card noprint"><div class="row"><label style="mar
 V.gun=()=>{const d=D.days[curDay]||{},o=d.out||{};
 const pk=Object.keys(D.days).filter(k=>k<curDay&&D.days[k].mk).sort().pop(),pm=d.mk||(pk?D.days[pk].mk:{m5:'a',m6:'a',m11:'a'}),pn=d.mkn||(!d.mk&&pk?D.days[pk].mkn:{})||{};
 const last=Object.keys(D.days).sort().reverse().slice(0,14);
-const grps=[...new Set(D.set.mach.map(m=>m.grp))];
+
 app.innerHTML=`<div class="card"><h3>Günlük giriş</h3>
 <label>Tarih<input type="date" id="g_d" value="${curDay}"></label>
 <label>Sefer sayısı (çeneye giren)<input type="number" inputmode="numeric" id="g_s" value="${d.sefer??''}"></label>
@@ -150,7 +156,7 @@ app.innerHTML=`<div class="card"><h3>Günlük giriş</h3>
 <div class="row"><label>Duruş (saat)<input type="number" inputmode="decimal" step="any" id="g_du" value="${d.durus??''}"></label><label>Sebep<input id="g_dn" value="${esc(d.durusN)}"></label></div>
 <label>Not<input id="g_n" value="${esc(d.note)}"></label></div>
 <div class="card"><h3>Makine durumu</h3><p class="mut">${d.mk?'':'Önceki günün durumu getirildi; değişeni düzelt.'}</p>
-${grps.map(g=>`<div class="mut" style="margin-top:10px;font-weight:700">${esc(g)}</div>`+D.set.mach.filter(m=>m.grp===g).map(m=>{const st=pm[m.id]||'c';return `<div style="display:flex;gap:6px;margin:4px 0;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">${esc(m.name)}</span><select data-mk="${m.id}" style="width:130px;${st!=='c'?'background:#fee2e2':''}">${Object.keys(DUR).map(k=>`<option value="${k}" ${k===st?'selected':''}>${DUR[k]}</option>`).join('')}</select><input data-mn="${m.id}" placeholder="Arıza / not" value="${esc(pn[m.id])}" style="flex-basis:100%;${st==='c'?'display:none':''}"></div>`}).join('')).join('')}</div>
+${byCat(D.set.mach).map(([g,ms])=>`<div class="mut" style="margin-top:10px;font-weight:700">${esc(g)}</div>`+ms.map(m=>{const st=pm[m.id]||'c';return `<div style="display:flex;gap:6px;margin:4px 0;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">${esc(m.name)}</span><select data-mk="${m.id}" style="width:130px;${st!=='c'?'background:#fee2e2':''}">${Object.keys(DUR).map(k=>`<option value="${k}" ${k===st?'selected':''}>${DUR[k]}</option>`).join('')}</select><input data-mn="${m.id}" placeholder="Arıza / not" value="${esc(pn[m.id])}" style="flex-basis:100%;${st==='c'?'display:none':''}"></div>`}).join('')).join('')}</div>
 <div class="card"><button class="b" id="g_save">Kaydet</button>${D.days[curDay]?'<button class="b g" onclick="V.rap()">Günlük rapor (PDF)</button>':''}${D.days[curDay]?'<button class="b r" id="g_del">Günü sil</button>':''}<span id="g_ok" class="mut"></span></div>
 <div class="card"><h3>Son kayıtlar</h3><div class="scroll"><table><tr><th>Tarih</th><th>Sefer</th><th>Giren (t)</th><th>Üretim (t)</th><th>Bypass (t)</th></tr>
 ${last.map(k=>{const x=D.days[k],g=(x.sefer||0)*D.set.ton,c=D.set.prods.reduce((s,p)=>s+((x.out||{})[p.id]||0),0);return `<tr onclick="curDay='${k}';go('gun')" style="cursor:pointer"><td>${k.slice(8)}.${k.slice(5,7)}.${k.slice(0,4)}</td><td>${nf(x.sefer)}</td><td>${nf(g)}</td><td>${nf(c,1)}</td><td>${c?nf(g-c,1):'–'}</td></tr>`}).join('')||'<tr><td colspan="5">Kayıt yok</td></tr>'}</table></div><p class="mut">Düzeltmek için satıra dokun.</p></div>`;
@@ -177,14 +183,14 @@ ${D.set.prods.map(p=>`<tr><td>${esc(pLbl(p.name))}</td><td>${r.o[p.id]?nf(r.o[p.
 <tr class="tot"><td>Kantar üretim toplam</td><td>${nf(r.c,2)} t</td></tr><tr><td>Bypass</td><td>${r.byp==null?'–':nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')'}</td></tr>
 <tr><td>Tesis duruşu</td><td>${d.durus?nf(d.durus,1)+' saat'+(d.durusN?' – '+esc(d.durusN):''):'Yok'}</td></tr></table>
 <h3 style="margin-top:14px">Makine durumu</h3>
-<table><tr><td>Çalışan</td><td>${r.by('c').length} / ${D.set.mach.length}</td></tr><tr><td>Arızalı</td><td style="text-align:left">${r.by('a').map(nm).join(', ')||'Yok'}</td></tr><tr><td>Bakımda</td><td style="text-align:left">${r.by('b').map(nm).join(', ')||'Yok'}</td></tr><tr><td>Yedekte</td><td style="text-align:left">${r.by('y').map(nm).join(', ')||'Yok'}</td></tr></table>
+<table><tr><td><b>Toplam çalışan</b></td><td><b>${r.by('c').length} / ${D.set.mach.length}</b></td></tr>${byCat(D.set.mach).map(([g,ms])=>{const nc=ncOf(ms,r.mk);return `<tr style="background:#f8fafc"><td><b>${esc(g)}</b></td><td><b>${okOf(ms,r.mk)} / ${ms.length}</b></td></tr>`+nc.map(m=>`<tr><td style="padding-left:16px;color:${r.mk[m.id]==='a'?'#c62828':'#475569'}">${DUR[r.mk[m.id]]}</td><td style="text-align:left">${nm(m)}</td></tr>`).join('')}).join('')}</table>
 <h3 style="margin-top:14px">${ayAd(curDay.slice(0,7))} – ay toplamı</h3>
 <table><tr><td>Çalışılan gün</td><td>${r.s.gun}</td></tr><tr><td>Sefer</td><td>${nf(r.s.sefer)}</td></tr><tr><td>Giren</td><td>${nf(r.s.giren)} t</td></tr><tr><td>Net (bypassız)</td><td>${nf(r.s.net)} t</td></tr><tr><td>Günlük ortalama giren</td><td>${nf(r.s.gun?r.s.giren/r.s.gun:0)} t</td></tr></table>
 ${d.note?`<p><b>Not:</b> ${esc(d.note)}</p>`:''}</div>`;
 const mOn=()=>!!($('#r_mes')&&$('#r_mes').checked),rFile=()=>cvPdf(mOn()?[raporCanvas(r),mesaiCanvas(curDay)]:raporCanvas(r),(mOn()?'Uretim_Mesai_':'Uretim_Raporu_')+curDay+'.pdf');
 $('#r_pdf').onclick=()=>pdfGonder(rFile(),'Günlük Üretim Raporu '+r.tar);$('#r_pdi').onclick=()=>pdfIndir(rFile());
 $('#r_sh').onclick=()=>{const t=['*Günlük Üretim Raporu – '+r.tar+'*','Sefer: '+nf(d.sefer)+' → Giren: '+nf(r.g)+' t',...D.set.prods.filter(p=>r.o[p.id]).map(p=>pLbl(p.name)+': '+nf(r.o[p.id],2)+' t'),'Üretim toplam: '+nf(r.c,2)+' t',r.byp==null?'':'Bypass: '+nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',
-d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','Arızalı: '+(r.by('a').map(m=>m.name).join(', ')||'yok'),r.by('b').length?'Bakımda: '+r.by('b').map(m=>m.name).join(', '):'','Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:'',mOn()&&D.mesai[curDay]?'Mesai: '+(()=>{const m=D.mesai[curDay],v=Object.values(m),t=v.reduce((a,b)=>a+b,0);return nf(t,1)+' saat, '+v.filter(x=>x>0).length+' kişi'+(isTatil(curDay)?' (tatil)':'')+(D.mesNot[curDay]?' – '+D.mesNot[curDay]:'')})():''].filter(Boolean).join('\n');
+d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','*Makine durumu* ('+r.by('c').length+'/'+D.set.mach.length+' çalışıyor)',...byCat(D.set.mach).map(([g,ms])=>{const nc=ncOf(ms,r.mk);return g+': '+okOf(ms,r.mk)+'/'+ms.length+(nc.length?' – '+nc.map(m=>m.name+' ('+DUR[r.mk[m.id]].toLocaleLowerCase('tr-TR')+((d.mkn||{})[m.id]?': '+d.mkn[m.id]:'')+')').join(', '):'')}),'Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:'',mOn()&&D.mesai[curDay]?'Mesai: '+(()=>{const m=D.mesai[curDay],v=Object.values(m),t=v.reduce((a,b)=>a+b,0);return nf(t,1)+' saat, '+v.filter(x=>x>0).length+' kişi'+(isTatil(curDay)?' (tatil)':'')+(D.mesNot[curDay]?' – '+D.mesNot[curDay]:'')})():''].filter(Boolean).join('\n');
 if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
 
 // ---------- PDF ----------
@@ -211,11 +217,11 @@ const top=s.cik||1;D.set.prods.forEach(p=>{if(s.out[p.id])yr=kv(MID+25,R,yr,'  '
 y=Math.max(yl,yr)+20;
 // Makine
 y=head('Makine durumu',L,R,y);const mk=d.mk||{},nm=m=>m.name+((d.mkn||{})[m.id]?' ('+d.mkn[m.id]+')':'');
-const line=(k,arr)=>{F(22,1);T(k,L,y);F(22);let x=L+235;if(!arr.length){T('Yok',x,y);y+=32;return}arr.forEach((t,i)=>{t+=(i<arr.length-1?',  ':'');const w=c.measureText(t).width;if(x+w>R){x=L+235;y+=30}T(t,x,y);x+=w});y+=34};
+const line=(k,arr,f)=>{F(22,1);T(k,L,y);F(22);let x=L+235;if(!arr.length){T('Yok',x,y);y+=32;return}arr.forEach((t,i)=>{t+=(i<arr.length-1?(f&&i===0?'   →   ':',  '):'');const w=c.measureText(t).width;if(x+w>R){x=L+235;y+=30}T(t,x,y);x+=w});y+=34};
 F(22,1);T('Bugün çalışan',L,y);F(22);T(r.by("c").length+" / "+D.set.mach.length,L+235,y);y+=34;
-line('Arızalı',r.by('a').map(nm));line('Bakımda',r.by('b').map(nm));
-const ds=s.ds.filter(k=>D.days[k].mk),low=D.set.mach.map(m=>{let cc=0,a=0,t=0;ds.forEach(k=>{const st=D.days[k].mk[m.id];if(st){t++;if(st==='c'||st==='y')cc++;if(st==='a')a++}});return{m,av:t?cc/t*100:100,a}}).filter(x=>x.av<100).sort((p,q)=>p.av-q.av);
-line('Ay emre amadelik',low.length?low.map(x=>x.m.name+' %'+nf(x.av)):['Tüm makineler %100']);
+byCat(D.set.mach).forEach(([g,ms])=>{const nc=ncOf(ms,mk);line(g,[okOf(ms,mk)+' / '+ms.length+' çalışıyor',...nc.map((m,i)=>(i===0||mk[nc[i-1].id]!==mk[m.id]?DUR[mk[m.id]]+': ':'')+nm(m))],1)});
+const ds=s.ds.filter(k=>D.days[k].mk),low=CATS.flatMap(g=>D.set.mach.filter(m=>cat(m)===g)).map(m=>{let cc=0,a=0,t=0;ds.forEach(k=>{const st=D.days[k].mk[m.id];if(st){t++;if(st==='c'||st==='y')cc++;if(st==='a')a++}});return{m,av:t?cc/t*100:100,a}}).filter(x=>x.av<100);
+if(!low.length)line('Ay emre amadelik',['Tüm makineler %100']);else{F(22,1);T('Ay emre amadelik',L,y);y+=32;CATS.forEach(g=>{const a=low.filter(x=>cat(x.m)===g);if(a.length)line('  '+g,a.map(x=>x.m.name+' %'+nf(x.av)))})}
 y+=10;
 // Günler tablosu
 y=head(ayAd(ym)+' – günler',L,R,y);const cols=[['Gün',L,0],['Sefer',L+230,1],['Giren (t)',L+430,1],['Üretim (t)',L+650,1],['Bypass (t)',L+870,1],['Duruş (sa)',R,1]];
@@ -276,7 +282,7 @@ const dur=s.ds.filter(k=>D.days[k].durus>0);
 app.innerHTML=monthSel('mak')+`<h3>${ayAd(curMonth)} – Makine ve Duruş</h3>
 <div class="kpis"><div class="kpi"><small>Tesis duruşu</small><b>${nf(s.durus,1)} sa</b></div><div class="kpi"><small>Tesis çalışma oranı</small><b>%${nf(s.gun?calS/(s.gun*V2)*100:0,1)}</b></div><div class="kpi"><small>Saatlik giren</small><b>${nf(tph)} t/sa</b></div><div class="kpi"><small>Duruş kaybı (tahmini)</small><b>${nf(s.durus*tph)} t</b></div></div>
 <div class="card"><h3>Emre amadelik (${ds.length} kayıtlı gün)</h3><div class="scroll"><table><tr><th>Makine</th><th>Çalışan</th><th>Arızalı</th><th>Bakım</th><th>Yedek</th><th>Emre amade</th></tr>
-${rows.map(r=>`<tr><td>${esc(r.m.name)}${r.notes.length?`<div class="mut">${esc(r.notes.join(' · '))}</div>`:''}</td><td>${r.c.c}</td><td style="${r.c.a?'color:#c62828;font-weight:700':''}">${r.c.a}</td><td>${r.c.b}</td><td>${r.c.y}</td><td>${r.av==null?'–':'%'+nf(r.av)}</td></tr>`).join('')}</table></div><p class="mut">Emre amade = (çalışan + yedekte) gün / kayıtlı gün.</p></div>
+${byCat(D.set.mach).map(([g,ms])=>`<tr style="background:#f1f5f9"><td colspan="6"><b>${esc(g)}</b></td></tr>`+rows.filter(r=>ms.includes(r.m)).map(r=>`<tr><td>${esc(r.m.name)}${r.notes.length?`<div class="mut">${esc(r.notes.join(' · '))}</div>`:''}</td><td>${r.c.c}</td><td style="${r.c.a?'color:#c62828;font-weight:700':''}">${r.c.a}</td><td>${r.c.b}</td><td>${r.c.y}</td><td>${r.av==null?'–':'%'+nf(r.av)}</td></tr>`).join('')).join('')}</table></div><p class="mut">Emre amade = (çalışan + yedekte) gün / kayıtlı gün.</p></div>
 <div class="card"><h3>Tesis duruşları</h3><table><tr><th>Gün</th><th>Saat</th><th>Sebep</th></tr>${dur.map(k=>`<tr><td>${k.slice(8)}.${k.slice(5,7)}</td><td>${nf(D.days[k].durus,1)}</td><td>${esc(D.days[k].durusN)}</td></tr>`).join('')||'<tr><td colspan="3">Duruş kaydı yok</td></tr>'}</table></div>`};
 
 // ---------- MESAİ ----------
