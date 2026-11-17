@@ -14,7 +14,15 @@
 body{margin:0;font-family:system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
 header{background:#1d2430;color:#fff;padding:12px 16px;position:sticky;top:0;z-index:5}
 header h1{font-size:18px;margin:0}
-nav{display:flex;background:#273142;position:sticky;top:46px;z-index:5;overflow-x:auto}
+.hb{background:#334155;border:0;color:#fff;font-size:15px;padding:8px 12px;border-radius:10px;margin-right:10px;cursor:pointer;display:none}
+.home{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:560px;margin:0 auto}
+.tile{background:#fff;border:0;border-radius:22px;aspect-ratio:1/0.72;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);font-size:16px;font-weight:600;color:#1d2430;cursor:pointer;transition:transform .1s}
+.tile:active{transform:scale(.96);background:#fff7ed}
+.tile i{font-style:normal;font-size:38px;line-height:1}
+.hsum{max-width:560px;margin:0 auto 14px;background:#fff;border-radius:18px;padding:12px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08);font-size:14px;color:#475569}
+.hsum b{color:#1d2430}
+@media(min-width:700px){.home{grid-template-columns:repeat(4,1fr);max-width:900px}.hsum{max-width:900px}}
+nav{display:none}
 nav button{flex:1;background:none;border:0;color:#cbd5e1;padding:12px 8px;font-size:14px;white-space:nowrap;border-bottom:3px solid transparent}
 nav button.on{color:#fff;border-bottom-color:#fb923c}
 main{max-width:900px;margin:0 auto;padding:12px}
@@ -42,7 +50,7 @@ h3{margin:0 0 8px;font-size:16px}
 </style>
 </head>
 <body>
-<header style="display:flex;align-items:center"><h1 style="flex:1">Üretim Takip</h1><span id="syncst" style="font-size:12px;color:#cbd5e1"></span></header>
+<header style="display:flex;align-items:center"><button class="hb" id="hb" onclick="history.state?history.back():go('home')">← Ana sayfa</button><h1 style="flex:1" id="ht">Üretim Takip</h1><span id="syncst" style="font-size:12px;color:#cbd5e1"></span></header>
 <nav id="nav"></nav>
 <main id="app"></main>
 <script>
@@ -68,9 +76,9 @@ function markChanges(){if(!SY.url)return;const cur=recs(),now=Date.now();let ch=
 Object.keys(cur).forEach(k=>{const j=JSON.stringify(cur[k]);if(SY.snap[k]!==j){SY.snap[k]=j;SY.ts[k]=now;SY.pend[k]=1;ch=true}});
 Object.keys(SY.snap).forEach(k=>{if(!(k in cur)){delete SY.snap[k];SY.ts[k]=now;SY.pend[k]=1;ch=true}});if(ch)saveSY()}
 function applyRec(k,v){if(k==='set'){if(v)D.set=v;return}const i=k.indexOf('|'),c=k.slice(0,i),key=k.slice(i+1);if(!COLL.includes(c))return;D[c]=D[c]||{};if(v==null)delete D[c][key];else D[c][key]=v}
-let syncBusy=false,syncTimer=null,curTab='gun';
+let syncBusy=false,syncTimer=null,curTab='home';
 function sst(t,col){const e=$('#syncst');if(e){e.textContent=t;e.style.color=col||'#cbd5e1'}}
-function schedSync(){if(!SY.url)return;clearTimeout(syncTimer);sst('● bekliyor','#fbbf24');syncTimer=setTimeout(doSync,1500)}
+function schedSync(){if(!SY.url)return;clearTimeout(syncTimer);sst('● Bağlı · bekliyor','#fbbf24');syncTimer=setTimeout(doSync,1500)}
 async function doSync(){if(!SY.url||syncBusy)return;if(!navigator.onLine){sst('● çevrimdışı','#fbbf24');return}syncBusy=true;
 const cur=recs(),init=!SY.last,keys=Object.keys(SY.pend),changes=keys.map(k=>({k,v:k in cur?cur[k]:null,t:SY.ts[k]||1}));
 try{const r=await fetch(SY.url,{method:'POST',body:JSON.stringify({token:SY.token,since:SY.last,changes})});const j=await r.json();
@@ -78,8 +86,8 @@ if(!j.ok)throw new Error(j.err==='token'?'şifre yanlış':(j.err||'hata'));
 keys.forEach(k=>{if(SY.ts[k]<=(changes.find(c=>c.k===k)||{}).t)delete SY.pend[k]});
 let got=0;(j.rows||[]).forEach(x=>{if(init||x.t>(SY.ts[x.k]||0)){if(SY.snap[x.k]!==JSON.stringify(x.v)){applyRec(x.k,x.v);got++}SY.ts[x.k]=x.t;if(x.v==null)delete SY.snap[x.k];else SY.snap[x.k]=JSON.stringify(x.v)}});
 SY.last=j.now;saveSY();if(got){saveRaw();const a=document.activeElement;if(!(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)))go(curTab)}
-sst('● eşit '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}),'#4ade80');SY.err='';
-}catch(e){SY.err=e.message;saveSY();sst('● hata','#f87171')}finally{syncBusy=false;if(Object.keys(SY.pend).length&&!SY.err)schedSync()}}
+sst('● Bağlı · '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}),'#4ade80');SY.err='';
+}catch(e){SY.err=e.message;saveSY();sst('● Bağlantı hatası','#f87171')}finally{syncBusy=false;if(Object.keys(SY.pend).length&&!SY.err)schedSync()}}
 setInterval(()=>{if(SY.url&&!document.hidden)doSync()},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SY.url)doSync()});window.addEventListener('online',()=>{if(SY.url)doSync()});
 
@@ -117,7 +125,12 @@ const st=Math.ceil(labels.length/12);vals.forEach((v,i)=>{const h=v/mx*(H-pb-pt)
 
 const TABS=[['gun','Günlük'],['ay','Ay Özeti'],['mak','Makine'],['mes','Mesai'],['mal','Maliyet'],['kar','Karşılaştır'],['ayar','Ayarlar']];
 const V={};
-function go(t){curTab=t;$('#nav').innerHTML=TABS.map(x=>`<button class="${x[0]===t?'on':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('');V[t]();window.scrollTo(0,0)}
+const TILES=[['gun','📝','Günlük Giriş'],['rap','📄','Günlük Rapor'],['ay','📊','Ay Özeti'],['mak','🚜','Makine'],['mes','👷','Mesai'],['mal','💰','Maliyet'],['kar','📈','Karşılaştır'],['ayar','⚙️','Ayarlar']];
+V.home=()=>{const t=new Date(),k=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'),d=D.days[k],s=mstat(k.slice(0,7));
+app.innerHTML=`<div class="hsum">Bugün: ${d?'<b>'+nf(d.sefer)+' sefer</b> girildi':'<b>henüz giriş yok</b>'} · ${ayAd(k.slice(0,7))}: <b>${nf(s.sefer)}</b> sefer, <b>${nf(s.giren)}</b> t giren</div><div class="home">${TILES.map(x=>`<button class="tile" onclick="${x[0]==='rap'?"curDay=lastDay();":''}go('${x[0]}')"><i>${x[1]}</i>${x[2]}</button>`).join('')}</div>`};
+function lastDay(){const ks=Object.keys(D.days).sort();return ks.length?ks[ks.length-1]:curDay}
+function go(t){if(t!=='home'&&curTab==='home')history.pushState({t},'');curTab=t;const tl=TILES.find(x=>x[0]===t);$('#ht').textContent=t==='home'?'Üretim Takip':(tl?tl[2]:'Üretim Takip');$('#hb').style.display=t==='home'?'none':'inline-block';V[t]();window.scrollTo(0,0)}
+window.onpopstate=()=>{if(curTab!=='home')go('home')};
 const monthSel=fn=>`<div class="card noprint"><div class="row"><label style="margin:0">Ay<input type="month" id="msel" value="${curMonth}" onchange="curMonth=this.value||curMonth;go('${fn}')"></label><div style="align-self:end"><button class="b g" onclick="window.print()">Yazdır / PDF</button></div></div></div>`;
 
 // ---------- GÜNLÜK ----------
@@ -155,7 +168,7 @@ if($('#g_del'))$('#g_del').onclick=async()=>{if(await ask(curDay.split('-').reve
 // ---------- GÜNLÜK RAPOR ----------
 function rapData(){const d=D.days[curDay],g=(d.sefer||0)*D.set.ton,o=d.out||{},c=D.set.prods.reduce((t,p)=>t+(o[p.id]||0),0),mk=d.mk||{},s=mstat(curDay.slice(0,7));
 const by=st=>D.set.mach.filter(m=>mk[m.id]===st);return{d,g,o,c,byp:c?g-c:null,mk,s,by,tar:curDay.slice(8)+'.'+curDay.slice(5,7)+'.'+curDay.slice(0,4)}}
-V.rap=()=>{const r=rapData(),d=r.d,nm=m=>esc(m.name)+((d.mkn||{})[m.id]?' ('+esc(d.mkn[m.id])+')':'');
+V.rap=()=>{if(!D.days[curDay]){app.innerHTML=`<div class="card"><h3>Günlük Rapor</h3><p>Rapor için önce bir gün girişi yapmalısın.</p><button class="b" onclick="go('gun')">Günlük girişe git</button></div>`;return}const r=rapData(),d=r.d,nm=m=>esc(m.name)+((d.mkn||{})[m.id]?' ('+esc(d.mkn[m.id])+')':'');
 app.innerHTML=`<div class="card noprint"><label style="display:flex;gap:8px;align-items:center;color:#1d2430;font-size:15px;margin:2px 0 8px">${D.set.pers.length?`<input type="checkbox" id="r_mes" style="width:22px;height:22px" ${D.mesai[curDay]?'checked':''}> Mesai çizelgesini de ekle${D.mesai[curDay]?'':' <span class="mut">(bu güne mesai girilmemiş)</span>'}`:''}</label><button class="b" id="r_pdf">📄 PDF paylaş</button><button class="b" id="r_pdi">⬇ PDF indir</button><button class="b g" onclick="window.print()">Yazdır</button><button class="b g" id="r_sh">Metin olarak paylaş</button><button class="b g" onclick="go('gun')">Geri</button>
 <p class="mut">PDF paylaş: rapor PDF olarak hazırlanır, paylaş menüsünden WhatsApp'ı seçersin.</p></div>
 <div class="card"><h3 style="font-size:19px">Günlük Üretim Raporu – ${r.tar}</h3>
@@ -374,7 +387,7 @@ $('#a_save').onclick=()=>{readSet();save();go('ayar')};
 $('#sy_b').onclick=async()=>{const u=$('#sy_u').value.trim(),t=$('#sy_t').value.trim();if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){$('#sy_m').textContent='Adres script.google.com ile başlamalı.';return}
 const first=SY.url!==u;SY.url=u;SY.token=t;if(first){SY.last=0;SY.ts={};SY.snap={};SY.pend={};const c=recs();Object.keys(c).forEach(k=>{SY.ts[k]=1;SY.pend[k]=1;SY.snap[k]=JSON.stringify(c[k])})}
 SY.err='';saveSY();$('#sy_m').textContent='Eşitleniyor...';await doSync();go('ayar')};
-if($('#sy_x'))$('#sy_x').onclick=async()=>{if(await ask('Eşitleme kapatılsın mı? Bu cihazdaki veriler silinmez.','Kapat')){SY={ts:{},snap:{},pend:{},last:0};saveSY();sst('');go('ayar')}};
+if($('#sy_x'))$('#sy_x').onclick=async()=>{if(await ask('Eşitleme kapatılsın mı? Bu cihazdaki veriler silinmez.','Kapat')){SY={ts:{},snap:{},pend:{},last:0};saveSY();sst('○ Bağlı değil','#94a3b8');go('ayar')}};
 $('#a_exp').onclick=()=>dl(JSON.stringify(D,null,1),'uretim_yedek_'+today()+'.json','application/json');
 $('#a_imp').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const x=JSON.parse(r.result);if(!x.set||(!x.days&&!x.mesai))throw 0;
 if(await ask('Yedekteki kayıtlar mevcut verinin üstüne eklensin mi? Aynı gün/ay varsa yedekteki geçerli olur.','Ekle')){Object.assign(D.days,x.days||{});Object.assign(D.months,x.months||{});Object.assign(D.mesai,x.mesai||{});Object.assign(D.tatil,x.tatil||{});Object.assign(D.mesNot,x.mesNot||{});Object.assign(D.mesKN,x.mesKN||{});(x.set.pers||[]).forEach(p=>{const e=D.set.pers.find(q=>q.id===p.id);if(e)Object.assign(e,p);else D.set.pers.push(p)});save();go(x.mesai?'mes':'kar')}}catch(err){ask('Dosya okunamadı.',null)}};r.readAsText(f)};
@@ -388,7 +401,7 @@ function moveItem(k,i,d){readSet();const a=D.set[ARR[k]],j=i+d;if(j<0||j>=a.leng
 async function delItem(k,i){readSet();const nm=D.set[ARR[k]][i].name||'Bu satır';if(!await ask('<b>'+esc(nm)+'</b> silinsin mi? Eski kayıtlardaki değerleri raporlarda görünmez olur.','Sil'))return;readSet();D.set[ARR[k]].splice(i,1);save();go('ayar')}
 function dl(txt,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
 
-go('gun');if(SY.url)doSync();
+go('home');if(SY.url)doSync();else sst('○ Bağlı değil','#94a3b8');
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
