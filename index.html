@@ -42,7 +42,7 @@ h3{margin:0 0 8px;font-size:16px}
 </style>
 </head>
 <body>
-<header><h1>Üretim Takip</h1></header>
+<header style="display:flex;align-items:center"><h1 style="flex:1">Üretim Takip</h1><span id="syncst" style="font-size:12px;color:#cbd5e1"></span></header>
 <nav id="nav"></nav>
 <main id="app"></main>
 <script>
@@ -56,7 +56,33 @@ mach:[['Hitachi 490','Ekskavatör (yükleme)'],['Volvo 480','Ekskavatör (yükle
 costs:['Personel (Maaş + SGK)','Akaryakıt (Mazot)','Elektrik','Patlayıcı Madde','Orman İşletme İzin Bedelleri','Devlet Hakkı, MTA ve Belediye Payı','Ruhsat Harcı','Danışmanlık ve ÇED','Yemekhane ve Sosyal','Atölye, Bakım ve Onarım','Genel İdare ve Diğer'].map((n,i)=>({id:'c'+(i+1),name:n}))};
 function load(){try{const d=JSON.parse(localStorage.getItem('ut_data'));if(d&&d.set){if(!d.set.mach)d.set.mach=JSON.parse(JSON.stringify(DEF.mach));if(!d.set.vardiya)d.set.vardiya=11;if(!d.set.pers)d.set.pers=[];if(!d.mesai)d.mesai={};if(!d.tatil)d.tatil={};if(!d.mesNot)d.mesNot={};if(!d.mesKN)d.mesKN={};return d}}catch(e){}const n={set:JSON.parse(JSON.stringify(DEF)),days:{},months:{},mesai:{},tatil:{},mesNot:{},mesKN:{}};n.set.pers=[];return n}
 let D=load();
-const save=()=>{try{localStorage.setItem('ut_data',JSON.stringify(D))}catch(e){}};
+const saveRaw=()=>{try{localStorage.setItem('ut_data',JSON.stringify(D))}catch(e){}};
+const save=()=>{saveRaw();markChanges();schedSync()};
+// ---------- EŞİTLEME (Google E-Tablo) ----------
+const COLL=['days','months','mesai','mesNot','mesKN','tatil'];
+let SY=(()=>{try{return JSON.parse(localStorage.getItem('ut_sync'))||{}}catch(e){return{}}})();
+SY.ts=SY.ts||{};SY.snap=SY.snap||{};SY.pend=SY.pend||{};SY.last=SY.last||0;
+const saveSY=()=>{try{localStorage.setItem('ut_sync',JSON.stringify(SY))}catch(e){}};
+function recs(){const r={set:D.set};COLL.forEach(c=>{const o=D[c]||{};Object.keys(o).forEach(k=>r[c+'|'+k]=o[k])});return r}
+function markChanges(){if(!SY.url)return;const cur=recs(),now=Date.now();let ch=false;
+Object.keys(cur).forEach(k=>{const j=JSON.stringify(cur[k]);if(SY.snap[k]!==j){SY.snap[k]=j;SY.ts[k]=now;SY.pend[k]=1;ch=true}});
+Object.keys(SY.snap).forEach(k=>{if(!(k in cur)){delete SY.snap[k];SY.ts[k]=now;SY.pend[k]=1;ch=true}});if(ch)saveSY()}
+function applyRec(k,v){if(k==='set'){if(v)D.set=v;return}const i=k.indexOf('|'),c=k.slice(0,i),key=k.slice(i+1);if(!COLL.includes(c))return;D[c]=D[c]||{};if(v==null)delete D[c][key];else D[c][key]=v}
+let syncBusy=false,syncTimer=null,curTab='gun';
+function sst(t,col){const e=$('#syncst');if(e){e.textContent=t;e.style.color=col||'#cbd5e1'}}
+function schedSync(){if(!SY.url)return;clearTimeout(syncTimer);sst('● bekliyor','#fbbf24');syncTimer=setTimeout(doSync,1500)}
+async function doSync(){if(!SY.url||syncBusy)return;if(!navigator.onLine){sst('● çevrimdışı','#fbbf24');return}syncBusy=true;
+const cur=recs(),init=!SY.last,keys=Object.keys(SY.pend),changes=keys.map(k=>({k,v:k in cur?cur[k]:null,t:SY.ts[k]||1}));
+try{const r=await fetch(SY.url,{method:'POST',body:JSON.stringify({token:SY.token,since:SY.last,changes})});const j=await r.json();
+if(!j.ok)throw new Error(j.err==='token'?'şifre yanlış':(j.err||'hata'));
+keys.forEach(k=>{if(SY.ts[k]<=(changes.find(c=>c.k===k)||{}).t)delete SY.pend[k]});
+let got=0;(j.rows||[]).forEach(x=>{if(init||x.t>(SY.ts[x.k]||0)){if(SY.snap[x.k]!==JSON.stringify(x.v)){applyRec(x.k,x.v);got++}SY.ts[x.k]=x.t;if(x.v==null)delete SY.snap[x.k];else SY.snap[x.k]=JSON.stringify(x.v)}});
+SY.last=j.now;saveSY();if(got){saveRaw();const a=document.activeElement;if(!(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)))go(curTab)}
+sst('● eşit '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}),'#4ade80');SY.err='';
+}catch(e){SY.err=e.message;saveSY();sst('● hata','#f87171')}finally{syncBusy=false;if(Object.keys(SY.pend).length&&!SY.err)schedSync()}}
+setInterval(()=>{if(SY.url&&!document.hidden)doSync()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SY.url)doSync()});window.addEventListener('online',()=>{if(SY.url)doSync()});
+
 const nf=(v,d=0)=>(+v||0).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const p2=n=>String(n).padStart(2,'0');
 const today=()=>{const t=new Date();return t.getFullYear()+'-'+p2(t.getMonth()+1)+'-'+p2(t.getDate())};
@@ -91,7 +117,7 @@ const st=Math.ceil(labels.length/12);vals.forEach((v,i)=>{const h=v/mx*(H-pb-pt)
 
 const TABS=[['gun','Günlük'],['ay','Ay Özeti'],['mak','Makine'],['mes','Mesai'],['mal','Maliyet'],['kar','Karşılaştır'],['ayar','Ayarlar']];
 const V={};
-function go(t){$('#nav').innerHTML=TABS.map(x=>`<button class="${x[0]===t?'on':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('');V[t]();window.scrollTo(0,0)}
+function go(t){curTab=t;$('#nav').innerHTML=TABS.map(x=>`<button class="${x[0]===t?'on':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('');V[t]();window.scrollTo(0,0)}
 const monthSel=fn=>`<div class="card noprint"><div class="row"><label style="margin:0">Ay<input type="month" id="msel" value="${curMonth}" onchange="curMonth=this.value||curMonth;go('${fn}')"></label><div style="align-self:end"><button class="b g" onclick="window.print()">Yazdır / PDF</button></div></div></div>`;
 
 // ---------- GÜNLÜK ----------
@@ -337,9 +363,18 @@ app.innerHTML=`<div class="card"><h3>Genel</h3><div class="row"><label>Sefer ba�
 <div class="card"><h3>Personel (mesai)</h3>${D.set.pers.map((x,i)=>`<div style="display:flex;gap:6px;margin:5px 0;align-items:center;flex-wrap:wrap"><input data-k="${i}" value="${esc(x.name)}" placeholder="Adı Soyadı" style="flex:1;min-width:140px"><input data-kg="${i}" value="${esc(x.gorev||'')}" placeholder="Görevi" style="flex:1;min-width:140px"><button class="b g s" onclick="moveItem('k',${i},-1)" ${i?'':'disabled'}>▲</button><button class="b g s" onclick="moveItem('k',${i},1)" ${i<D.set.pers.length-1?'':'disabled'}>▼</button><button class="b r s" onclick="delItem('k',${i})">✕</button></div>`).join('')}<button class="b g s" onclick="addItem('k')">+ Personel ekle</button><p class="mut">Silinen kişinin geçmiş mesaisi raporlarda görünmez olur; işten ayrılan kişiyi ay bitene kadar silme.</p></div>
 <div class="card"><h3>Gider kalemleri</h3>${list(D.set.costs,'c')}<button class="b g s" onclick="addItem('c')">+ Kalem ekle</button></div>
 <div class="card"><button class="b" id="a_save">Ayarları kaydet</button></div>
+<div class="card"><h3>Otomatik eşitleme (telefon ↔ bilgisayar)</h3>
+<label>Google web uygulaması adresi<input id="sy_u" value="${esc(SY.url||'')}" placeholder="https://script.google.com/macros/s/.../exec"></label>
+<label>Şifre<input id="sy_t" value="${esc(SY.token||'')}" placeholder="Apps Script'e yazdığın şifre"></label>
+<button class="b" id="sy_b">${SY.url?'Kaydet ve eşitle':'Bağlan'}</button>${SY.url?'<button class="b g" id="sy_x">Bağlantıyı kes</button>':''}
+<p class="mut" id="sy_m">${SY.url?(SY.err?'Son hata: '+esc(SY.err):'Bağlı. Son eşitleme: '+(SY.last?new Date(SY.last).toLocaleString('tr-TR'):'henüz yok')):'Bağlı değil. İlk önce en güncel verinin olduğu cihazı bağla.'}</p></div>
 <div class="card"><h3>Veri</h3><button class="b g" id="a_exp">Yedek indir</button><label class="b g" style="display:inline-block;color:#fff">Yedek yükle<input type="file" id="a_imp" accept=".json" style="display:none"></label><button class="b g" id="a_csv">Excel'e aktar (CSV)</button>
 <p class="mut">Veriler sadece bu cihazda durur. Telefon ↔ bilgisayar arası taşımak için yedek indir / yükle kullan.</p></div>`;
 $('#a_save').onclick=()=>{readSet();save();go('ayar')};
+$('#sy_b').onclick=async()=>{const u=$('#sy_u').value.trim(),t=$('#sy_t').value.trim();if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){$('#sy_m').textContent='Adres script.google.com ile başlamalı.';return}
+const first=SY.url!==u;SY.url=u;SY.token=t;if(first){SY.last=0;SY.ts={};SY.snap={};SY.pend={};const c=recs();Object.keys(c).forEach(k=>{SY.ts[k]=1;SY.pend[k]=1;SY.snap[k]=JSON.stringify(c[k])})}
+SY.err='';saveSY();$('#sy_m').textContent='Eşitleniyor...';await doSync();go('ayar')};
+if($('#sy_x'))$('#sy_x').onclick=async()=>{if(await ask('Eşitleme kapatılsın mı? Bu cihazdaki veriler silinmez.','Kapat')){SY={ts:{},snap:{},pend:{},last:0};saveSY();sst('');go('ayar')}};
 $('#a_exp').onclick=()=>dl(JSON.stringify(D,null,1),'uretim_yedek_'+today()+'.json','application/json');
 $('#a_imp').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const x=JSON.parse(r.result);if(!x.set||(!x.days&&!x.mesai))throw 0;
 if(await ask('Yedekteki kayıtlar mevcut verinin üstüne eklensin mi? Aynı gün/ay varsa yedekteki geçerli olur.','Ekle')){Object.assign(D.days,x.days||{});Object.assign(D.months,x.months||{});Object.assign(D.mesai,x.mesai||{});Object.assign(D.tatil,x.tatil||{});Object.assign(D.mesNot,x.mesNot||{});Object.assign(D.mesKN,x.mesKN||{});(x.set.pers||[]).forEach(p=>{const e=D.set.pers.find(q=>q.id===p.id);if(e)Object.assign(e,p);else D.set.pers.push(p)});save();go(x.mesai?'mes':'kar')}}catch(err){ask('Dosya okunamadı.',null)}};r.readAsText(f)};
@@ -353,7 +388,7 @@ function moveItem(k,i,d){readSet();const a=D.set[ARR[k]],j=i+d;if(j<0||j>=a.leng
 async function delItem(k,i){readSet();const nm=D.set[ARR[k]][i].name||'Bu satır';if(!await ask('<b>'+esc(nm)+'</b> silinsin mi? Eski kayıtlardaki değerleri raporlarda görünmez olur.','Sil'))return;readSet();D.set[ARR[k]].splice(i,1);save();go('ayar')}
 function dl(txt,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
 
-go('gun');
+go('gun');if(SY.url)doSync();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
