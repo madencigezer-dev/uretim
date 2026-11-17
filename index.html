@@ -183,56 +183,68 @@ ${D.set.prods.map(p=>`<tr><td>${esc(pLbl(p.name))}</td><td>${r.o[p.id]?nf(r.o[p.
 <tr class="tot"><td>Kantar üretim toplam</td><td>${nf(r.c,2)} t</td></tr><tr><td>Bypass</td><td>${r.byp==null?'–':nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')'}</td></tr>
 <tr><td>Tesis duruşu</td><td>${d.durus?nf(d.durus,1)+' saat'+(d.durusN?' – '+esc(d.durusN):''):'Yok'}</td></tr></table>
 <h3 style="margin-top:14px">Makine durumu</h3>
-<table><tr><td><b>Toplam çalışan</b></td><td><b>${r.by('c').length} / ${D.set.mach.length}</b></td></tr>${byCat(D.set.mach).map(([g,ms])=>{const nc=ncOf(ms,r.mk);return `<tr style="background:#f8fafc"><td><b>${esc(g)}</b></td><td><b>${okOf(ms,r.mk)} / ${ms.length}</b></td></tr>`+(okOf(ms,r.mk)?`<tr><td style="padding-left:16px;color:#1a7f37">Çalışıyor</td><td style="text-align:left">${cOf(ms,r.mk).map(m=>esc(m.name)).join(', ')}</td></tr>`:'')+nc.map(m=>`<tr><td style="padding-left:16px;color:${r.mk[m.id]==='a'?'#c62828':'#475569'}">${DUR[r.mk[m.id]]}</td><td style="text-align:left">${nm(m)}</td></tr>`).join('')}).join('')}</table>
+<table>${byCat(D.set.mach).map(([g,ms])=>{const nc=ncOf(ms,r.mk);return `<tr style="background:#f8fafc"><td><b>${esc(g)}</b></td><td></td></tr>`+(okOf(ms,r.mk)?`<tr><td style="padding-left:16px;color:#1a7f37">Çalışıyor</td><td style="text-align:left">${cOf(ms,r.mk).map(m=>esc(m.name)).join(', ')}</td></tr>`:'')+['a','b','y'].map(k=>{const l=nc.filter(m=>r.mk[m.id]===k);return l.length?`<tr><td style="padding-left:16px;color:${k==='a'?'#c62828':k==='b'?'#b45309':'#475569'}">${DUR[k]}</td><td style="text-align:left">${l.map(nm).join(', ')}</td></tr>`:''}).join('')}).join('')}</table>
 <h3 style="margin-top:14px">${ayAd(curDay.slice(0,7))} – ay toplamı</h3>
 <table><tr><td>Çalışılan gün</td><td>${r.s.gun}</td></tr><tr><td>Sefer</td><td>${nf(r.s.sefer)}</td></tr><tr><td>Giren</td><td>${nf(r.s.giren)} t</td></tr><tr><td>Net (bypassız)</td><td>${nf(r.s.net)} t</td></tr><tr><td>Günlük ortalama giren</td><td>${nf(r.s.gun?r.s.giren/r.s.gun:0)} t</td></tr></table>
 ${d.note?`<p><b>Not:</b> ${esc(d.note)}</p>`:''}</div>`;
 const mOn=()=>!!($('#r_mes')&&$('#r_mes').checked),rFile=()=>cvPdf(mOn()?[raporCanvas(r),mesaiCanvas(curDay)]:raporCanvas(r),(mOn()?'Uretim_Mesai_':'Uretim_Raporu_')+curDay+'.pdf');
 $('#r_pdf').onclick=()=>pdfGonder(rFile(),'Günlük Üretim Raporu '+r.tar);$('#r_pdi').onclick=()=>pdfIndir(rFile());
 $('#r_sh').onclick=()=>{const t=['*Günlük Üretim Raporu – '+r.tar+'*','Sefer: '+nf(d.sefer)+' → Giren: '+nf(r.g)+' t',...D.set.prods.filter(p=>r.o[p.id]).map(p=>pLbl(p.name)+': '+nf(r.o[p.id],2)+' t'),'Üretim toplam: '+nf(r.c,2)+' t',r.byp==null?'':'Bypass: '+nf(r.byp,2)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',
-d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','*Makine durumu* ('+r.by('c').length+'/'+D.set.mach.length+' çalışıyor)',...byCat(D.set.mach).map(([g,ms])=>{const nc=ncOf(ms,r.mk);return g+': '+okOf(ms,r.mk)+'/'+ms.length+(okOf(ms,r.mk)?' – Çalışan: '+cOf(ms,r.mk).map(m=>m.name).join(', '):'')+(nc.length?' | '+nc.map(m=>m.name+' ('+DUR[r.mk[m.id]].toLocaleLowerCase('tr-TR')+((d.mkn||{})[m.id]?': '+d.mkn[m.id]:'')+')').join(', '):'')}),'Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:'',mOn()&&D.mesai[curDay]?'Mesai: '+(()=>{const m=D.mesai[curDay],v=Object.values(m),t=v.reduce((a,b)=>a+b,0);return nf(t,1)+' saat, '+v.filter(x=>x>0).length+' kişi'+(isTatil(curDay)?' (tatil)':'')+(D.mesNot[curDay]?' – '+D.mesNot[curDay]:'')})():''].filter(Boolean).join('\n');
+d.durus?'Tesis duruşu: '+nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'','*Makine durumu*',...byCat(D.set.mach).map(([g,ms])=>{const nc=ncOf(ms,r.mk);return '_'+g+'_'+(okOf(ms,r.mk)?'\n  Çalışan: '+cOf(ms,r.mk).map(m=>m.name).join(', '):'')+['a','b','y'].map(k=>{const l=nc.filter(m=>r.mk[m.id]===k);return l.length?'\n  '+DUR[k]+': '+l.map(m=>m.name+((d.mkn||{})[m.id]?' ('+d.mkn[m.id]+')':'')).join(', '):''}).join('')}),'Ay toplamı: '+nf(r.s.giren)+' t giren, '+nf(r.s.net)+' t net ('+r.s.gun+' gün)',d.note?'Not: '+d.note:'',mOn()&&D.mesai[curDay]?'Mesai: '+(()=>{const m=D.mesai[curDay],v=Object.values(m),t=v.reduce((a,b)=>a+b,0);return nf(t,1)+' saat, '+v.filter(x=>x>0).length+' kişi'+(isTatil(curDay)?' (tatil)':'')+(D.mesNot[curDay]?' – '+D.mesNot[curDay]:'')})():''].filter(Boolean).join('\n');
 if(navigator.share)navigator.share({text:t}).catch(()=>{});else navigator.clipboard.writeText(t).then(()=>{$('#r_sh').textContent='Kopyalandı ✓'})};window.scrollTo(0,0)};
 
 // ---------- PDF ----------
-function raporCanvas(r){const d=r.d,s=r.s,ym=curDay.slice(0,7),W=1240,H=1754,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
-c.fillStyle='#fff';c.fillRect(0,0,W,H);const L=70,R=W-70,MID=W/2;let y;
+function raporCanvas(r){const d=r.d,s=r.s,ym=curDay.slice(0,7),W=1754,H=1240,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
+c.fillStyle='#fff';c.fillRect(0,0,W,H);
+const L1=60,R1=530,L2=575,R2=1010,L3=1055,R3=W-60;
 const F=(sz,b)=>c.font=(b?'bold ':'')+sz+'px Arial, sans-serif';
 const T=(t,x,yy,al,col)=>{c.textAlign=al||'left';c.fillStyle=col||'#1d2430';c.fillText(t,x,yy);c.textAlign='left'};
 const fit=(t,w)=>{t=String(t);if(c.measureText(t).width<=w)return t;while(t.length>3&&c.measureText(t+'…').width>w)t=t.slice(0,-1);return t+'…'};
 const head=(t,x,x2,yy)=>{F(26,1);T(t,x,yy,0,'#c2410c');c.fillStyle='#c2410c';c.fillRect(x,yy+10,x2-x,3);return yy+42};
 const kv=(x,x2,yy,k,v,b)=>{F(22,b);T(k,x,yy);T(fit(v,(x2-x)*0.55),x2,yy,'right');c.fillStyle='#e5e7eb';c.fillRect(x,yy+10,x2-x,1);return yy+34};
-c.fillStyle='#1d2430';c.fillRect(0,0,W,64);F(28,1);T('AYTAŞ – Üretim Raporu',L,42,0,'#fff');T(r.tar,R,42,'right','#fff');
-// Günlük (sol) + Ay toplamı (sağ)
-let yl=head('Günlük – '+r.tar,L,MID-25,110),yr=head(ayAd(ym)+' toplamı',MID+25,R,110);
-yl=kv(L,MID-25,yl,'Sefer',nf(d.sefer));yl=kv(L,MID-25,yl,'Giren (× '+D.set.ton+' t)',nf(r.g)+' t');
-D.set.prods.forEach(p=>yl=kv(L,MID-25,yl,pLbl(p.name),r.o[p.id]?nf(r.o[p.id],2)+' t':'–'));
-yl=kv(L,MID-25,yl,'Üretim toplam',nf(r.c,2)+' t',1);yl=kv(L,MID-25,yl,'Bypass',r.byp==null?'–':nf(r.byp,1)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',1);
-yl=kv(L,MID-25,yl,'Tesis duruşu',d.durus?nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'Yok');
+c.fillStyle='#1d2430';c.fillRect(0,0,W,64);F(28,1);T('AYTAŞ – Üretim Raporu',L1,42,0,'#fff');T(r.tar,R3,42,'right','#fff');
+// 1. sütun: Günlük
+let y1=head('Günlük – '+r.tar,L1,R1,110);
+y1=kv(L1,R1,y1,'Sefer',nf(d.sefer));y1=kv(L1,R1,y1,'Giren (× '+D.set.ton+' t)',nf(r.g)+' t');
+D.set.prods.forEach(p=>y1=kv(L1,R1,y1,pLbl(p.name),r.o[p.id]?nf(r.o[p.id],2)+' t':'–'));
+y1=kv(L1,R1,y1,'Üretim toplam',nf(r.c,2)+' t',1);y1=kv(L1,R1,y1,'Bypass',r.byp==null?'–':nf(r.byp,1)+' t (%'+nf(r.g?r.byp/r.g*100:0,1)+')',1);
+y1=kv(L1,R1,y1,'Tesis duruşu',d.durus?nf(d.durus,1)+' sa'+(d.durusN?' – '+d.durusN:''):'Yok');
+// 2. sütun: Ay toplamı
 const V2=D.set.vardiya||11,calS=s.gun*V2-s.durus;
-yr=kv(MID+25,R,yr,'Çalışılan gün',s.gun);yr=kv(MID+25,R,yr,'Sefer',nf(s.sefer));yr=kv(MID+25,R,yr,'Giren',nf(s.giren)+' t');
-yr=kv(MID+25,R,yr,'Kantar üretim',nf(s.cik)+' t');yr=kv(MID+25,R,yr,'Bypass',nf(s.byp)+' t (%'+nf(s.giren?s.byp/s.giren*100:0,1)+')');
-yr=kv(MID+25,R,yr,'Net (bypassız)',nf(s.net)+' t',1);yr=kv(MID+25,R,yr,'Günlük ort. giren',nf(s.gun?s.giren/s.gun:0)+' t');
-yr=kv(MID+25,R,yr,'Tesis duruşu',nf(s.durus,1)+' sa');yr=kv(MID+25,R,yr,'Tesis çalışma oranı','%'+nf(s.gun?calS/(s.gun*V2)*100:0,1));
-const top=s.cik||1;D.set.prods.forEach(p=>{if(s.out[p.id])yr=kv(MID+25,R,yr,'  '+pLbl(p.name),nf(s.out[p.id])+' t (%'+nf(s.out[p.id]/top*100,1)+')')});
-y=Math.max(yl,yr)+20;
-// Makine
-y=head('Makine durumu',L,R,y);const mk=d.mk||{},nm=m=>m.name+((d.mkn||{})[m.id]?' ('+d.mkn[m.id]+')':'');
-const line=(k,arr,f)=>{F(22,1);T(k,L,y);F(22);let x=L+235;if(!arr.length){T('Yok',x,y);y+=32;return}arr.forEach((t,i)=>{if(t[0]==='\n'){t=t.slice(1);if(x>L+235){x=L+235;y+=30}}const nx=arr[i+1];t+=(i<arr.length-1?(f&&i===0?'   →   ':(nx[0]==='\n'?'':',  ')):'');const w=c.measureText(t).width;if(x+w>R){x=L+235;y+=30}T(t,x,y);x+=w});y+=34};
-F(22,1);T('Bugün çalışan',L,y);F(22);T(r.by("c").length+" / "+D.set.mach.length,L+235,y);y+=34;
-byCat(D.set.mach).forEach(([g,ms])=>{const nc=ncOf(ms,mk);line(g,[okOf(ms,mk)+' / '+ms.length+' çalışıyor',...cOf(ms,mk).map((m,i)=>(i===0?'Çalışan: ':'')+m.name),...nc.map((m,i)=>(i===0||mk[nc[i-1].id]!==mk[m.id]?'\n'+DUR[mk[m.id]]+': ':'')+nm(m))],1)});
-const ds=s.ds.filter(k=>D.days[k].mk),low=CATS.flatMap(g=>D.set.mach.filter(m=>cat(m)===g)).map(m=>{let cc=0,a=0,t=0;ds.forEach(k=>{const st=D.days[k].mk[m.id];if(st){t++;if(st==='c'||st==='y')cc++;if(st==='a')a++}});return{m,av:t?cc/t*100:100,a}}).filter(x=>x.av<100);
-if(!low.length)line('Ay emre amadelik',['Tüm makineler %100']);else{F(22,1);T('Ay emre amadelik',L,y);y+=32;CATS.forEach(g=>{const a=low.filter(x=>cat(x.m)===g);if(a.length)line('  '+g,a.map(x=>x.m.name+' %'+nf(x.av)))})}
-y+=10;
-// Günler tablosu
-y=head(ayAd(ym)+' – günler',L,R,y);const cols=[['Gün',L,0],['Sefer',L+230,1],['Giren (t)',L+430,1],['Üretim (t)',L+650,1],['Bypass (t)',L+870,1],['Duruş (sa)',R,1]];
-F(20,1);cols.forEach(([t,x,al])=>T(t,x,y,al?'right':'left','#6b7280'));y+=8;c.fillStyle='#1d2430';c.fillRect(L,y,R-L,2);y+=26;
-const rows=s.ds,avail=H-60-y-40,rh=Math.max(16,Math.min(30,avail/Math.max(rows.length+1,1))),fs=Math.max(13,Math.min(20,rh-8));
+let y2=head(ayAd(ym)+' toplamı',L2,R2,110);
+y2=kv(L2,R2,y2,'Çalışılan gün',s.gun);y2=kv(L2,R2,y2,'Sefer',nf(s.sefer));y2=kv(L2,R2,y2,'Giren',nf(s.giren)+' t');
+y2=kv(L2,R2,y2,'Kantar üretim',nf(s.cik)+' t');y2=kv(L2,R2,y2,'Bypass',nf(s.byp)+' t (%'+nf(s.giren?s.byp/s.giren*100:0,1)+')');
+y2=kv(L2,R2,y2,'Net (bypassız)',nf(s.net)+' t',1);y2=kv(L2,R2,y2,'Günlük ort. giren',nf(s.gun?s.giren/s.gun:0)+' t');
+y2=kv(L2,R2,y2,'Tesis duruşu',nf(s.durus,1)+' sa');y2=kv(L2,R2,y2,'Tesis çalışma oranı','%'+nf(s.gun?calS/(s.gun*V2)*100:0,1));
+const top=s.cik||1;D.set.prods.forEach(p=>{if(s.out[p.id])y2=kv(L2,R2,y2,'  '+pLbl(p.name),nf(s.out[p.id])+' t (%'+nf(s.out[p.id]/top*100,1)+')')});
+// liste çizici: "Etiket: a, b, c" (taşarsa alt satıra sarar); dry=true ise sadece yüksekliği ölçer
+let y;
+const wl=(label,col,items,x0,x1,off,dry)=>{if(!dry){F(20,1);T(label+':',x0,y,0,col)}const lx=x0+off;F(20);let x=lx;const sp=c.measureText(' ').width;items.forEach((t,i)=>{const t2=t+(i<items.length-1?',':''),tw=c.measureText(t2).width;if(i>0&&x+sp*2+tw>x1&&lx+tw<=x1){x=lx;y+=26}const ws=t2.split(' ');ws.forEach((wd,j)=>{const w=c.measureText(wd).width,lead=(i>0&&j===0)?sp*2:(j>0?sp:0);if(x+lead+w>x1&&x>lx){x=lx;y+=26}else x+=(x>lx?lead:0);if(!dry)T(wd,x,y);x+=w})});y+=30};
+// Makine durumu: önce 1. sütunun altına, sığmazsa 2. sütunun altına devam eder
+const mk=d.mk||{},nm=m=>m.name+((d.mkn||{})[m.id]?' ('+d.mkn[m.id]+')':''),LIM=H-110;
+const ST=[['c','Çalışan','#1a7f37'],['a','Arızalı','#c62828'],['b','Bakımda','#b45309'],['y','Yedekte','#475569']];
+const mItems=(ms,st)=>{const it=ms.filter(m=>(mk[m.id]||'c')===st).map(m=>st==='c'?m.name:nm(m));if(st==='c'&&!it.length)it.push('Yok');return it};
+const catDraw=(g,ms,x0,x1,dry)=>{if(!dry){F(22,1);T(g,x0,y,0,'#1d2430')}y+=30;ST.forEach(([st,lb,col])=>{const it=mItems(ms,st);if(it.length)wl(lb,col,it,x0+14,x1,100,dry)});y+=6};
+const catH=(g,ms,x0,x1)=>{const y0=y;catDraw(g,ms,x0,x1,true);const h=y-y0;y=y0;return h};
+y=head('Makine durumu',L1,R1,y1+20);
+if(!d.mk){F(20);T('Bu gün için makine durumu girilmemiş.',L1,y)}
+else{let col=1,mx0=L1,mx1=R1;byCat(D.set.mach).forEach(([g,ms])=>{if(col===1&&y+catH(g,ms,mx0,mx1)>LIM){col=2;mx0=L2;mx1=R2;y=head('Makine durumu (devam)',L2,R2,y2+20)}catDraw(g,ms,mx0,mx1,false)})}
+// 3. sütun: günler tablosu
+y=head(ayAd(ym)+' – günler',L3,R3,110);
+const cols=[['Gün',L3,0],['Sefer',L3+150,1],['Giren (t)',L3+262,1],['Üretim (t)',L3+380,1],['Bypass (t)',L3+560,1],['Duruş',R3,1]];
+F(18,1);cols.forEach(([t,x,al])=>T(t,x,y,al?'right':'left','#6b7280'));y+=8;c.fillStyle='#1d2430';c.fillRect(L3,y,R3-L3,2);y+=26;
+const rows=s.ds,avail=H-60-y-40-300,rh=Math.max(16,Math.min(30,avail/Math.max(rows.length+1,1))),fs=Math.max(13,Math.min(18,rh-8));
 rows.forEach(k=>{const x=D.days[k],g=(x.sefer||0)*D.set.ton,cc=D.set.prods.reduce((t,p)=>t+((x.out||{})[p.id]||0),0),bold=k===curDay;F(fs,bold);
-if(bold){c.fillStyle='#fff7ed';c.fillRect(L,y-rh+6,R-L,rh)}
-[k.slice(8)+'.'+k.slice(5,7)+(x.durusN?'  '+fit(x.durusN,140):''),nf(x.sefer),nf(g),cc?nf(cc):'–',cc?nf(g-cc)+'  (%'+nf((g-cc)/g*100,1)+')':'–',x.durus?nf(x.durus,1):''].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));y+=rh});
-F(fs,1);c.fillStyle='#1d2430';c.fillRect(L,y-rh+8,R-L,2);y+=4;['Toplam',nf(s.sefer),nf(s.giren),nf(s.cik),nf(s.byp)+'  (%'+nf(s.giren?s.byp/s.giren*100:0,1)+')',nf(s.durus,1)].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));
-if(d.note){F(20);T('Not: '+fit(d.note,R-L-60),L,H-75)}
-F(18);T('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L,H-40,0,'#6b7280');return cv}
+if(bold){c.fillStyle='#fff7ed';c.fillRect(L3,y-rh+6,R3-L3,rh)}
+[k.slice(8)+'.'+k.slice(5,7),nf(x.sefer),nf(g),cc?nf(cc):'–',cc?nf(g-cc)+' (%'+nf((g-cc)/g*100,0)+')':'–',x.durus?nf(x.durus,1):''].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));y+=rh});
+F(fs,1);c.fillStyle='#1d2430';c.fillRect(L3,y-rh+8,R3-L3,2);y+=4;['Toplam',nf(s.sefer),nf(s.giren),nf(s.cik),nf(s.byp)+' (%'+nf(s.giren?s.byp/s.giren*100:0,0)+')',nf(s.durus,1)].forEach((v,i)=>T(v,cols[i][1],y,cols[i][2]?'right':'left'));
+// 3. sütun altı: Ay emre amadelik
+const ds=s.ds.filter(k=>D.days[k].mk),low=CATS.flatMap(g=>D.set.mach.filter(m=>cat(m)===g)).map(m=>{let cc=0,a=0,t=0;ds.forEach(k=>{const st=D.days[k].mk[m.id];if(st){t++;if(st==='c'||st==='y')cc++;if(st==='a')a++}});return{m,av:t?cc/t*100:100,a}}).filter(x=>x.av<100);
+y=head('Ay emre amadelik',L3,R3,y+50);
+if(!low.length){F(20);T('Tüm makineler %100',L3,y)}
+else CATS.forEach(g=>{const a=low.filter(x=>cat(x.m)===g);if(a.length)wl(g,'#1d2430',a.map(x=>x.m.name+' %'+nf(x.av)),L3,R3,195)});
+if(d.note){F(20);T('Not: '+fit(d.note,R3-L1-60),L1,H-75)}
+F(18);T('Üretim Takip – '+new Date().toLocaleString('tr-TR'),L1,H-40,0,'#6b7280');return cv}
 function jpgPdf(pages){const enc=new TextEncoder(),parts=[],off=[];let len=0;const add=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
 const obj=(n,body,stream)=>{off[n]=len;add(n+' 0 obj\n'+body);if(stream){add('stream\n');add(stream);add('\nendstream')}add('\nendobj\n')};
 add('%PDF-1.4\n');const n=pages.length,kids=pages.map((_,i)=>(3+i*3)+' 0 R').join(' ');
